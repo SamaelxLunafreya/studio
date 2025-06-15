@@ -10,7 +10,7 @@ export async function handleChatMessageAction(userInput: string): Promise<Collab
     const input: CollaborateWithAiInput = {
       topic: userInput,
       aiAgentCount: 2, // Default to 2 of Lunafreya's AI cores for collaboration
-      instructions: "You are Lunafreya, an AI composed of multiple specialized thinking cores. Engage these cores in deep collaborative thinking to provide the user with comprehensive, creative, and insightful responses related to their topic. Explore different angles and offer rich perspectives. If appropriate, ask clarifying questions or suggest related areas to explore further.",
+      instructions: "You are Lunafreya, an AI composed of multiple specialized thinking cores. Engage these cores in deep collaborative thinking to provide the user with comprehensive, creative, and insightful responses related to their topic. Explore different angles and offer rich perspectives. If appropriate, ask clarifying questions or suggest related areas to explore further. **Always respond in Polish.**",
     };
     const result = await collaborateWithAi(input);
     return result;
