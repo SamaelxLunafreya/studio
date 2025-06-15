@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { History, Trash2, FileText, AlertTriangle, CheckCircle, Archive } from 'lucide-react';
+import { History, Trash2, FileText, AlertTriangle, CheckCircle, Archive, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -27,7 +27,7 @@ interface Message {
   id: string;
   role: 'user' | 'ai';
   text: string;
-  timestamp: Date | string; // Allow string temporarily from JSON parse
+  timestamp: Date | string; 
   suggestions?: string[];
   isError?: boolean;
 }
@@ -40,6 +40,7 @@ interface SavedChatSession {
 }
 
 const CHAT_HISTORY_LOCAL_STORAGE_KEY = 'chatHistory';
+const LUNAFREYA_GREETING_ID = 'lunafreya-initial-greeting'; // To identify initial greeting message
 
 export default function ChatHistoryPage() {
   const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
@@ -53,17 +54,22 @@ export default function ChatHistoryPage() {
     if (historyJson) {
       try {
         const parsedHistory = JSON.parse(historyJson) as SavedChatSession[];
-        const processedHistory = parsedHistory.map(session => ({
-          ...session,
-          messages: session.messages.map(msg => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp) 
-          })),
-        })).sort((a, b) => b.savedAt - a.savedAt);
+        const processedHistory = parsedHistory
+          .map(session => ({
+            ...session,
+            messages: session.messages.map(msg => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp) 
+            })),
+          }))
+          // Filter out any sessions that might only contain the greeting
+          .filter(session => !(session.messages.length === 1 && session.messages[0].id === LUNAFREYA_GREETING_ID))
+          .sort((a, b) => b.savedAt - a.savedAt);
         setSavedSessions(processedHistory);
       } catch (error) {
         console.error("Error parsing chat history:", error);
-        toast({ title: "Error", description: "Could not load chat history.", variant: "destructive" });
+        toast({ title: "Error", description: "Could not load chat history. It might be corrupted.", variant: "destructive" });
+        localStorage.removeItem(CHAT_HISTORY_LOCAL_STORAGE_KEY); // Clear corrupted history
         setSavedSessions([]);
       }
     } else {
@@ -92,7 +98,18 @@ export default function ChatHistoryPage() {
 
   const handleArchiveSession = async (session: SavedChatSession) => {
     setArchivingId(session.id);
-    const chatContent = session.messages.map(msg => `${msg.role === 'user' ? 'User' : 'AI'} (${new Date(msg.timestamp).toLocaleString()}): ${msg.text}`).join('\n\n');
+    // Filter out the greeting message before archiving, if present
+    const messagesToArchive = session.messages.filter(msg => msg.id !== LUNAFREYA_GREETING_ID);
+    if (messagesToArchive.length === 0) {
+      toast({
+        title: "Archive Canceled",
+        description: "Cannot archive an empty chat or a chat with only the initial greeting.",
+        variant: "destructive"
+      });
+      setArchivingId(null);
+      return;
+    }
+    const chatContent = messagesToArchive.map(msg => `${msg.role === 'user' ? 'User' : 'AI'} (${new Date(msg.timestamp).toLocaleString()}): ${msg.text}`).join('\n\n');
     const memoryInput = {
       text: `Archived Chat Session: ${session.name}\nSaved At: ${new Date(session.savedAt).toLocaleString()}\n\n--- Chat Content ---\n${chatContent}`
     };
@@ -112,7 +129,17 @@ export default function ChatHistoryPage() {
         description: `"${session.name}" has been archived to AI memory.`,
         icon: <CheckCircle className="h-5 w-5" />
       });
+      // Optionally, delete the session from local history after archiving
+      // deleteSession(session.id); 
     }
+  };
+
+  const getFirstMeaningfulMessage = (messages: Message[]): string => {
+    const firstUserMsg = messages.find(m => m.role === 'user');
+    if (firstUserMsg) return firstUserMsg.text;
+    const firstNonGreetingAiMsg = messages.find(m => m.role === 'ai' && m.id !== LUNAFREYA_GREETING_ID);
+    if (firstNonGreetingAiMsg) return firstNonGreetingAiMsg.text;
+    return "Chat preview unavailable.";
   };
 
   return (
@@ -198,12 +225,12 @@ export default function ChatHistoryPage() {
                           </AlertDialog>
                         </CardTitle>
                         <CardDescription className="text-xs">
-                          Saved: {new Date(session.savedAt).toLocaleString()} &bull; {session.messages.length} messages
+                          Saved: {new Date(session.savedAt).toLocaleString()} &bull; {session.messages.filter(m => m.id !== LUNAFREYA_GREETING_ID).length} meaningful messages
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0 pb-3">
                         <p className="text-sm text-muted-foreground truncate">
-                          {session.messages[0]?.text || "No messages preview."}
+                          {getFirstMeaningfulMessage(session.messages)}
                         </p>
                       </CardContent>
                       <CardFooter className="pt-0 flex gap-2">
@@ -220,7 +247,7 @@ export default function ChatHistoryPage() {
                           disabled={archivingId === session.id}
                         >
                           {archivingId === session.id ? (
-                            <Archive className="mr-2 h-4 w-4 animate-pulse" />
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : (
                             <Archive className="mr-2 h-4 w-4" />
                           )}
@@ -238,3 +265,5 @@ export default function ChatHistoryPage() {
     </>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -17,7 +18,7 @@ interface Message {
   id: string;
   role: 'user' | 'ai';
   text: string;
-  timestamp: Date; // Stored as Date, will be stringified/parsed for localStorage
+  timestamp: Date;
   suggestions?: string[];
   isError?: boolean;
 }
@@ -26,10 +27,11 @@ interface SavedChatSession {
   id: string;
   name: string;
   messages: Message[];
-  savedAt: number; // Store as number (timestamp)
+  savedAt: number;
 }
 
 const CHAT_HISTORY_LOCAL_STORAGE_KEY = 'chatHistory';
+const LUNAFREYA_GREETING_ID = 'lunafreya-initial-greeting';
 
 export default function ChatPage() {
   const router = useRouter();
@@ -55,35 +57,27 @@ export default function ChatPage() {
 
   useEffect(scrollToBottom, [messages]);
 
-  // Load chat from history if sessionId is in URL
-  useEffect(() => {
-    const sessionId = searchParams.get('sessionId');
-    if (sessionId) {
-      loadChatSession(sessionId);
-    }
-  }, [searchParams]);
-  
-  const getChatHistory = (): SavedChatSession[] => {
+  const getChatHistory = useCallback((): SavedChatSession[] => {
     if (typeof window === 'undefined') return [];
     const historyJson = localStorage.getItem(CHAT_HISTORY_LOCAL_STORAGE_KEY);
     if (historyJson) {
       try {
         const parsedHistory = JSON.parse(historyJson) as SavedChatSession[];
-        // Ensure timestamps are Date objects after parsing
         return parsedHistory.map(session => ({
           ...session,
           messages: session.messages.map(msg => ({
             ...msg,
-            timestamp: new Date(msg.timestamp) 
+            timestamp: new Date(msg.timestamp) // Ensure timestamp is a Date object
           }))
         }));
       } catch (error) {
         console.error("Error parsing chat history from localStorage:", error);
+        localStorage.removeItem(CHAT_HISTORY_LOCAL_STORAGE_KEY); // Clear corrupted history
         return [];
       }
     }
     return [];
-  };
+  }, []);
 
   const saveChatHistory = (history: SavedChatSession[]) => {
     if (typeof window === 'undefined') return;
@@ -92,34 +86,36 @@ export default function ChatPage() {
 
   const saveCurrentChat = useCallback((messagesToSave?: Message[]) => {
     const currentMessages = messagesToSave || messages;
-    if (currentMessages.length === 0) return null;
+    // Do not save if it's just the initial greeting
+    if (currentMessages.length === 0 || (currentMessages.length === 1 && currentMessages[0].id === LUNAFREYA_GREETING_ID)) return null;
+
 
     const history = getChatHistory();
     let newSessionId = currentSessionId || Date.now().toString();
-    const sessionName = currentMessages[0]?.text.substring(0, 50) || `Chat - ${new Date().toLocaleString()}`;
+    const firstUserMessage = currentMessages.find(m => m.role === 'user');
+    const sessionName = firstUserMessage?.text.substring(0, 50) || `Chat - ${new Date(currentMessages[0].timestamp).toLocaleString()}`;
     
     const existingSessionIndex = history.findIndex(session => session.id === newSessionId);
 
     const sessionToSave: SavedChatSession = {
       id: newSessionId,
       name: sessionName,
-      messages: currentMessages.map(msg => ({...msg, timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)})), // Ensure Date objects
+      messages: currentMessages.map(msg => ({...msg, timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)})),
       savedAt: Date.now(),
     };
 
     if (existingSessionIndex > -1) {
       history[existingSessionIndex] = sessionToSave;
     } else {
-      history.unshift(sessionToSave); // Add new sessions to the beginning
+      history.unshift(sessionToSave);
     }
     
-    saveChatHistory(history.slice(0, 50)); // Limit history size
-    setCurrentSessionId(newSessionId); // Ensure currentSessionId is set for subsequent saves
+    saveChatHistory(history.slice(0, 50));
+    setCurrentSessionId(newSessionId);
     return newSessionId;
-  }, [messages, currentSessionId]);
+  }, [messages, currentSessionId, getChatHistory]);
 
-
-  const loadChatSession = (sessionId: string) => {
+  const loadChatSession = useCallback((sessionId: string) => {
     const history = getChatHistory();
     const session = history.find(s => s.id === sessionId);
     if (session) {
@@ -128,21 +124,59 @@ export default function ChatPage() {
       toast({ title: 'Chat Loaded', description: `Loaded "${session.name}".` });
     } else {
       toast({ title: 'Error', description: 'Chat session not found.', variant: 'destructive' });
+      setMessages([]); // Clear messages if session not found
+      setCurrentSessionId(null);
+      addInitialGreetingIfNeeded([]); // Add greeting if new chat after failed load
+    }
+  }, [toast, getChatHistory]);
+
+  const addInitialGreetingIfNeeded = (currentMessages: Message[]) => {
+    if (currentMessages.length === 0) {
+      const greetingMessage: Message = {
+        id: LUNAFREYA_GREETING_ID,
+        role: 'ai',
+        text: "Hello! I'm Lunafreya, your AI assistant. How can I help you today?",
+        timestamp: new Date(),
+      };
+      setMessages([greetingMessage]);
     }
   };
+  
+  useEffect(() => {
+    const sessionIdFromUrl = searchParams.get('sessionId');
+    if (sessionIdFromUrl) {
+      if (sessionIdFromUrl !== currentSessionId) {
+        loadChatSession(sessionIdFromUrl);
+      }
+    } else {
+      // Only add greeting if messages are truly empty and no session ID in URL
+      if (messages.length === 0 && !currentSessionId) {
+        addInitialGreetingIfNeeded(messages);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, loadChatSession]); // currentSessionId and messages removed to avoid loops with greeting
+
 
   const handleNewChat = () => {
-    if (messages.length > 0) {
+    if (messages.length > 0 && !(messages.length === 1 && messages[0].id === LUNAFREYA_GREETING_ID)) {
       const savedId = saveCurrentChat();
       if (savedId) {
          toast({ title: 'Chat Saved', description: 'Previous chat session was saved.' });
       }
     }
-    setMessages([]);
     setInputValue('');
     setSuggestions([]);
-    setCurrentSessionId(null);
-    router.push('/chat'); // Clear sessionId from URL
+    setCurrentSessionId(null); 
+    // Add initial greeting for the new chat
+    const greetingMessage: Message = {
+      id: LUNAFREYA_GREETING_ID,
+      role: 'ai',
+      text: "Hello! I'm Lunafreya, your AI assistant. How can I help you today?",
+      timestamp: new Date(),
+    };
+    setMessages([greetingMessage]);
+    router.push('/chat', { scroll: false });
   };
 
   useEffect(() => {
@@ -165,8 +199,7 @@ export default function ChatPage() {
           }
         }
          setInputValue(prev => {
-            // Heuristic: if prev ends with interim, replace it, otherwise append
-            if (interimTranscript && prev.endsWith(interimTranscript.slice(0,-1))) { // handle slight diffs
+            if (interimTranscript && prev.endsWith(interimTranscript.slice(0,-1))) { 
                 return prev.slice(0, prev.length - interimTranscript.length +1) + interimTranscript;
             }
             return prev + interimTranscript;
@@ -195,7 +228,6 @@ export default function ChatPage() {
     if (isListening) {
       recognitionRef.current.stop();
     } else {
-      // Keep existing text, append recognized speech.
       recognitionRef.current.start();
     }
     setIsListening(!isListening);
@@ -229,8 +261,15 @@ export default function ChatPage() {
     const textToSend = (messageText || inputValue).trim();
     if (!textToSend) return;
 
+    let updatedMessages = [...messages];
+    // If the only message is the initial greeting, replace it with the user's message
+    if (updatedMessages.length === 1 && updatedMessages[0].id === LUNAFREYA_GREETING_ID) {
+      updatedMessages = [];
+    }
+    
     const userMessage: Message = { id: Date.now().toString(), role: 'user', text: textToSend, timestamp: new Date() };
-    const updatedMessages = [...messages, userMessage];
+    updatedMessages.push(userMessage);
+    
     setMessages(updatedMessages);
     setInputValue('');
     setIsLoading(true);
@@ -284,7 +323,7 @@ export default function ChatPage() {
                   <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                   <div className="mt-1.5 flex items-center justify-between">
                     <span className="text-xs opacity-70">{new Date(msg.timestamp).toLocaleTimeString()}</span>
-                    {msg.role === 'ai' && !msg.isError && (
+                    {msg.role === 'ai' && !msg.isError && msg.id !== LUNAFREYA_GREETING_ID && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => speakText(msg.text)}>
                         <Volume2 size={16} />
                         <span className="sr-only">Speak</span>
@@ -330,7 +369,7 @@ export default function ChatPage() {
             <Button variant="outline" size="sm" onClick={handleNewChat}>
               <PlusCircle size={16} className="mr-2" /> New Chat
             </Button>
-            <Button variant="outline" size="sm" onClick={() => { saveCurrentChat(); toast({title: "Chat Saved", description: "Current conversation saved to history."}) }} disabled={messages.length === 0}>
+            <Button variant="outline" size="sm" onClick={() => { saveCurrentChat(); toast({title: "Chat Saved", description: "Current conversation saved to history."}) }} disabled={messages.length === 0 || (messages.length === 1 && messages[0].id === LUNAFREYA_GREETING_ID)}>
               <Save size={16} className="mr-2" /> Save Chat
             </Button>
              <Button variant="outline" size="sm" onClick={() => router.push('/chat-history')}>
@@ -367,3 +406,5 @@ export default function ChatPage() {
     </>
   );
 }
+
+    
