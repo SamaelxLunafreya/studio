@@ -22,8 +22,8 @@ export const ai = genkit({
     googleAI(), // Using Google AI plugin
     // openai(), // OpenAI plugin removed due to installation issues with @genkit-ai/openai
   ],
-  // Default model changed to gemini-pro due to 'gemini-1.5-flash-latest' not being found.
+  // Default model changed to gemini-1.0-pro due to 'gemini-pro' not being found.
   // Flows that need a specific model (like image generation) must specify it explicitly.
-  model: 'gemini-pro', // Defaulting to a generally available Google AI model
+  model: 'gemini-1.0-pro', // Defaulting to a generally available Google AI model
   // logLevel: 'debug', // Uncomment for verbose Genkit logging
 });
