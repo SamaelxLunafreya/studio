@@ -3,16 +3,18 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Send, Mic, Volume2, AlertCircle, Bot, User, Lightbulb, Loader2, Save, PlusCircle, FileText } from 'lucide-react';
+import { Send, Mic, Volume2, Bot, User, Lightbulb, Loader2, Save, PlusCircle, FileText, Power } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { handleChatMessageAction, getIntelligentSuggestionsAction } from '@/actions/chatActions';
+import { handleChatMessageAction, getIntelligentSuggestionsAction, getAutonomousUpdateAction } from '@/actions/chatActions';
 import type { CollaborateWithAiOutput } from '@/ai/flows/collaborate-with-ai';
 import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface Message {
   id: string;
@@ -21,6 +23,7 @@ interface Message {
   timestamp: Date;
   suggestions?: string[];
   isError?: boolean;
+  isAutonomous?: boolean;
 }
 
 interface SavedChatSession {
@@ -31,6 +34,7 @@ interface SavedChatSession {
 }
 
 const CHAT_HISTORY_LOCAL_STORAGE_KEY = 'chatHistory';
+const AUTONOMOUS_MODE_STORAGE_KEY = 'autonomousModeEnabled';
 const LUNAFREYA_GREETING_ID = 'lunafreya-initial-greeting';
 
 export default function ChatPage() {
@@ -42,8 +46,10 @@ export default function ChatPage() {
   const [isListening, setIsListening] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isAutonomousModeEnabled, setIsAutonomousModeEnabled] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const autonomousIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const scrollToBottom = () => {
@@ -57,6 +63,58 @@ export default function ChatPage() {
 
   useEffect(scrollToBottom, [messages]);
 
+  // Load autonomous mode setting from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedMode = localStorage.getItem(AUTONOMOUS_MODE_STORAGE_KEY);
+      setIsAutonomousModeEnabled(savedMode === 'true');
+    }
+  }, []);
+
+  // Effect for handling autonomous updates
+  useEffect(() => {
+    if (isAutonomousModeEnabled) {
+      autonomousIntervalRef.current = setInterval(async () => {
+        const result = await getAutonomousUpdateAction();
+        if ('error' in result) {
+          console.error("Autonomous update error:", result.error);
+        } else {
+          const autonomousMessage: Message = {
+            id: Date.now().toString() + '-autonomous',
+            role: 'ai',
+            text: `Lunafreya's thought: ${result.thought}`,
+            timestamp: new Date(),
+            isAutonomous: true,
+          };
+          setMessages(prev => [...prev, autonomousMessage]);
+        }
+      }, 30000); // 30 seconds
+    } else {
+      if (autonomousIntervalRef.current) {
+        clearInterval(autonomousIntervalRef.current);
+        autonomousIntervalRef.current = null;
+      }
+    }
+    // Cleanup interval on component unmount or when mode is disabled
+    return () => {
+      if (autonomousIntervalRef.current) {
+        clearInterval(autonomousIntervalRef.current);
+      }
+    };
+  }, [isAutonomousModeEnabled]);
+
+  const handleAutonomousModeToggle = (enabled: boolean) => {
+    setIsAutonomousModeEnabled(enabled);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(AUTONOMOUS_MODE_STORAGE_KEY, enabled.toString());
+      toast({
+        title: `Autonomous Mode ${enabled ? 'Enabled' : 'Disabled'}`,
+        description: enabled ? "Lunafreya will now offer proactive thoughts." : "Autonomous updates are off.",
+      });
+    }
+  };
+
+
   const getChatHistory = useCallback((): SavedChatSession[] => {
     if (typeof window === 'undefined') return [];
     const historyJson = localStorage.getItem(CHAT_HISTORY_LOCAL_STORAGE_KEY);
@@ -67,12 +125,12 @@ export default function ChatPage() {
           ...session,
           messages: session.messages.map(msg => ({
             ...msg,
-            timestamp: new Date(msg.timestamp) // Ensure timestamp is a Date object
+            timestamp: new Date(msg.timestamp) 
           }))
         }));
       } catch (error) {
         console.error("Error parsing chat history from localStorage:", error);
-        localStorage.removeItem(CHAT_HISTORY_LOCAL_STORAGE_KEY); // Clear corrupted history
+        localStorage.removeItem(CHAT_HISTORY_LOCAL_STORAGE_KEY); 
         return [];
       }
     }
@@ -86,14 +144,13 @@ export default function ChatPage() {
 
   const saveCurrentChat = useCallback((messagesToSave?: Message[]) => {
     const currentMessages = messagesToSave || messages;
-    // Do not save if it's just the initial greeting
-    if (currentMessages.length === 0 || (currentMessages.length === 1 && currentMessages[0].id === LUNAFREYA_GREETING_ID)) return null;
-
+    const meaningfulMessages = currentMessages.filter(m => m.id !== LUNAFREYA_GREETING_ID && !m.isAutonomous);
+    if (meaningfulMessages.length === 0) return null;
 
     const history = getChatHistory();
     let newSessionId = currentSessionId || Date.now().toString();
-    const firstUserMessage = currentMessages.find(m => m.role === 'user');
-    const sessionName = firstUserMessage?.text.substring(0, 50) || `Chat - ${new Date(currentMessages[0].timestamp).toLocaleString()}`;
+    const firstUserMessage = meaningfulMessages.find(m => m.role === 'user');
+    const sessionName = firstUserMessage?.text.substring(0, 50) || `Chat - ${new Date(meaningfulMessages[0].timestamp).toLocaleString()}`;
     
     const existingSessionIndex = history.findIndex(session => session.id === newSessionId);
 
@@ -124,21 +181,24 @@ export default function ChatPage() {
       toast({ title: 'Chat Loaded', description: `Loaded "${session.name}".` });
     } else {
       toast({ title: 'Error', description: 'Chat session not found.', variant: 'destructive' });
-      setMessages([]); // Clear messages if session not found
+      setMessages([]); 
       setCurrentSessionId(null);
-      addInitialGreetingIfNeeded([]); // Add greeting if new chat after failed load
+      addInitialGreetingIfNeeded([]); 
     }
   }, [toast, getChatHistory]);
 
   const addInitialGreetingIfNeeded = (currentMessages: Message[]) => {
-    if (currentMessages.length === 0) {
-      const greetingMessage: Message = {
-        id: LUNAFREYA_GREETING_ID,
-        role: 'ai',
-        text: "Hello! I'm Lunafreya, your AI assistant. How can I help you today?",
-        timestamp: new Date(),
-      };
-      setMessages([greetingMessage]);
+    if (currentMessages.length === 0 || currentMessages.every(m => m.isAutonomous)) {
+       const nonAutonomousMessages = currentMessages.filter(m => !m.isAutonomous);
+        if (nonAutonomousMessages.length === 0) {
+            const greetingMessage: Message = {
+                id: LUNAFREYA_GREETING_ID,
+                role: 'ai',
+                text: "Hello! I'm Lunafreya, your AI assistant. How can I help you today?",
+                timestamp: new Date(),
+            };
+            setMessages(prev => [greetingMessage, ...prev.filter(m => m.isAutonomous)]);
+        }
     }
   };
   
@@ -149,17 +209,17 @@ export default function ChatPage() {
         loadChatSession(sessionIdFromUrl);
       }
     } else {
-      // Only add greeting if messages are truly empty and no session ID in URL
-      if (messages.length === 0 && !currentSessionId) {
-        addInitialGreetingIfNeeded(messages);
+      if (messages.filter(m => !m.isAutonomous).length === 0 && !currentSessionId) {
+         addInitialGreetingIfNeeded(messages);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, loadChatSession]); // currentSessionId and messages removed to avoid loops with greeting
+  }, [searchParams, loadChatSession]); 
 
 
   const handleNewChat = () => {
-    if (messages.length > 0 && !(messages.length === 1 && messages[0].id === LUNAFREYA_GREETING_ID)) {
+    const meaningfulMessages = messages.filter(m => m.id !== LUNAFREYA_GREETING_ID && !m.isAutonomous);
+    if (meaningfulMessages.length > 0) {
       const savedId = saveCurrentChat();
       if (savedId) {
          toast({ title: 'Chat Saved', description: 'Previous chat session was saved.' });
@@ -168,14 +228,13 @@ export default function ChatPage() {
     setInputValue('');
     setSuggestions([]);
     setCurrentSessionId(null); 
-    // Add initial greeting for the new chat
     const greetingMessage: Message = {
       id: LUNAFREYA_GREETING_ID,
       role: 'ai',
       text: "Hello! I'm Lunafreya, your AI assistant. How can I help you today?",
       timestamp: new Date(),
     };
-    setMessages([greetingMessage]);
+    setMessages(prev => [greetingMessage, ...prev.filter(m => m.isAutonomous && m.timestamp.getTime() > Date.now() - 5*60*1000)]); // Keep recent autonomous
     router.push('/chat', { scroll: false });
   };
 
@@ -262,9 +321,10 @@ export default function ChatPage() {
     if (!textToSend) return;
 
     let updatedMessages = [...messages];
-    // If the only message is the initial greeting, replace it with the user's message
-    if (updatedMessages.length === 1 && updatedMessages[0].id === LUNAFREYA_GREETING_ID) {
-      updatedMessages = [];
+    // Remove initial greeting if it's the only non-autonomous message
+    const nonAutonomousMessages = updatedMessages.filter(m => !m.isAutonomous);
+    if (nonAutonomousMessages.length === 1 && nonAutonomousMessages[0].id === LUNAFREYA_GREETING_ID) {
+      updatedMessages = updatedMessages.filter(m => m.id !== LUNAFREYA_GREETING_ID);
     }
     
     const userMessage: Message = { id: Date.now().toString(), role: 'user', text: textToSend, timestamp: new Date() };
@@ -291,12 +351,13 @@ export default function ChatPage() {
       setMessages(finalMessages);
       
       const conversationContext = finalMessages
+        .filter(m => !m.isAutonomous) // Exclude autonomous messages from suggestion context
         .slice(-5) 
         .map(m => `${m.role}: ${m.text}`)
         .join('\n');
-      fetchSuggestions(conversationContext);
+      if(conversationContext) fetchSuggestions(conversationContext);
     }
-  }, [inputValue, messages, toast, fetchSuggestions, saveCurrentChat]);
+  }, [inputValue, messages, toast, fetchSuggestions]);
 
   const handleSuggestionClick = (suggestion: string) => {
     handleSendMessage(suggestion);
@@ -317,13 +378,16 @@ export default function ChatPage() {
                 )}
                 <div className={cn(
                   'max-w-[70%] rounded-xl p-3 shadow-md',
-                  msg.role === 'user' ? 'bg-primary text-primary-foreground' : (msg.isError ? 'bg-destructive text-destructive-foreground' : 'bg-card'),
-                  msg.isError && 'border border-destructive/50'
+                  msg.role === 'user' ? 'bg-primary text-primary-foreground' : 
+                  (msg.isError ? 'bg-destructive text-destructive-foreground' : 
+                  (msg.isAutonomous ? 'bg-accent text-accent-foreground opacity-90 italic' : 'bg-card')),
+                  msg.isError && 'border border-destructive/50',
+                  msg.isAutonomous && 'border border-dashed border-primary/50'
                 )}>
                   <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                   <div className="mt-1.5 flex items-center justify-between">
                     <span className="text-xs opacity-70">{new Date(msg.timestamp).toLocaleTimeString()}</span>
-                    {msg.role === 'ai' && !msg.isError && msg.id !== LUNAFREYA_GREETING_ID && (
+                    {msg.role === 'ai' && !msg.isError && msg.id !== LUNAFREYA_GREETING_ID && !msg.isAutonomous && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => speakText(msg.text)}>
                         <Volume2 size={16} />
                         <span className="sr-only">Speak</span>
@@ -351,7 +415,7 @@ export default function ChatPage() {
           </div>
         </ScrollArea>
         
-        {suggestions.length > 0 && (
+        {suggestions.length > 0 && !isLoading && (
           <div className="p-4 border-t">
             <div className="flex flex-wrap gap-2 items-center">
               <span className="text-sm font-medium flex items-center mr-2 text-muted-foreground"><Lightbulb size={16} className="mr-1 text-primary"/>Suggestions:</span>
@@ -365,16 +429,27 @@ export default function ChatPage() {
         )}
 
         <div className="border-t p-4 space-y-3">
-          <div className="flex gap-2 justify-start">
+          <div className="flex flex-wrap gap-2 justify-start items-center">
             <Button variant="outline" size="sm" onClick={handleNewChat}>
               <PlusCircle size={16} className="mr-2" /> New Chat
             </Button>
-            <Button variant="outline" size="sm" onClick={() => { saveCurrentChat(); toast({title: "Chat Saved", description: "Current conversation saved to history."}) }} disabled={messages.length === 0 || (messages.length === 1 && messages[0].id === LUNAFREYA_GREETING_ID)}>
+            <Button variant="outline" size="sm" onClick={() => { saveCurrentChat(); toast({title: "Chat Saved", description: "Current conversation saved to history."}) }} disabled={messages.filter(m => m.id !== LUNAFREYA_GREETING_ID && !m.isAutonomous).length === 0}>
               <Save size={16} className="mr-2" /> Save Chat
             </Button>
              <Button variant="outline" size="sm" onClick={() => router.push('/chat-history')}>
               <FileText size={16} className="mr-2" /> View History
             </Button>
+            <div className="flex items-center space-x-2 ml-auto">
+              <Switch
+                id="autonomous-mode"
+                checked={isAutonomousModeEnabled}
+                onCheckedChange={handleAutonomousModeToggle}
+                aria-label="Toggle autonomous updates"
+              />
+              <Label htmlFor="autonomous-mode" className="text-sm flex items-center text-muted-foreground">
+                <Power size={14} className={cn("mr-1.5", isAutonomousModeEnabled ? "text-primary" : "text-muted-foreground")} /> Autonomous Updates
+              </Label>
+            </div>
           </div>
           <div className="relative flex items-center gap-2">
             <Textarea
@@ -406,5 +481,3 @@ export default function ChatPage() {
     </>
   );
 }
-
-    

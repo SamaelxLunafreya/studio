@@ -2,6 +2,7 @@
 
 import { collaborateWithAi, type CollaborateWithAiInput, type CollaborateWithAiOutput } from '@/ai/flows/collaborate-with-ai';
 import { suggestRelevantActions, type SuggestRelevantActionsInput, type SuggestRelevantActionsOutput } from '@/ai/flows/suggest-relevant-actions';
+import { getAutonomousUpdate, type AutonomousUpdateOutput } from '@/ai/flows/get-autonomous-update-flow';
 
 export async function handleChatMessageAction(userInput: string): Promise<CollaborateWithAiOutput | { error: string }> {
   try {
@@ -29,5 +30,15 @@ export async function getIntelligentSuggestionsAction(conversationContext: strin
   } catch (error) {
     console.error('Error in getIntelligentSuggestionsAction:', error);
     return { error: 'Failed to get suggestions.' };
+  }
+}
+
+export async function getAutonomousUpdateAction(): Promise<AutonomousUpdateOutput | { error: string }> {
+  try {
+    const result = await getAutonomousUpdate();
+    return result;
+  } catch (error) {
+    console.error('Error in getAutonomousUpdateAction:', error);
+    return { error: 'Failed to get autonomous update.' };
   }
 }

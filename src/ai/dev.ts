@@ -9,6 +9,7 @@ import '@/ai/flows/initial-prompt-setup.ts';
 import '@/ai/flows/generate-code-snippets.ts';
 import '@/ai/flows/ai-assisted-web-search.ts';
 import '@/ai/flows/collaborative-workspace-flow.ts';
-import '@/ai/flows/generate-image-flow.ts'; // Register new image generation flow
-import '@/ai/flows/translate-text-flow.ts'; // Register new translation flow
-import '@/ai/tools/google-drive-tool.ts'; // Register the new tool
+import '@/ai/flows/generate-image-flow.ts';
+import '@/ai/flows/translate-text-flow.ts';
+import '@/ai/flows/get-autonomous-update-flow.ts'; // Register new autonomous update flow
+import '@/ai/tools/google-drive-tool.ts';
