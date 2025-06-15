@@ -116,7 +116,7 @@ export default function ChatPage() {
           };
           setMessages(prev => [...prev, autonomousMessage]);
         }
-      }, 30000); 
+      }, 30000);
     } else {
       if (autonomousIntervalRef.current) {
         clearInterval(autonomousIntervalRef.current);
@@ -135,7 +135,7 @@ export default function ChatPage() {
     if (typeof window !== 'undefined') {
       localStorage.setItem(AUTONOMOUS_MODE_STORAGE_KEY, enabled.toString());
       toast({
-        title: currentLanguage === 'Polish' 
+        title: currentLanguage === 'Polish'
           ? `Tryb Autonomiczny ${enabled ? 'Włączony' : 'Wyłączony'}`
           : `Autonomous Mode ${enabled ? 'Enabled' : 'Disabled'}`,
         description: currentLanguage === 'Polish'
@@ -177,12 +177,12 @@ export default function ChatPage() {
           ...session,
           messages: session.messages.map(msg => ({
             ...msg,
-            timestamp: new Date(msg.timestamp) 
+            timestamp: new Date(msg.timestamp)
           }))
         }));
       } catch (error) {
         console.error("Error parsing chat history from localStorage:", error);
-        localStorage.removeItem(CHAT_HISTORY_LOCAL_STORAGE_KEY); 
+        localStorage.removeItem(CHAT_HISTORY_LOCAL_STORAGE_KEY);
         return [];
       }
     }
@@ -203,7 +203,7 @@ export default function ChatPage() {
     const firstUserMessage = meaningfulMessages.find(m => m.role === 'user');
     const sessionNameBase = firstUserMessage?.text.substring(0, 30) || (currentLanguage === 'Polish' ? 'Czat' : 'Chat');
     const sessionName = `${sessionNameBase} - ${new Date(meaningfulMessages[0].timestamp).toLocaleDateString()}`;
-    
+
     const history = getChatHistory();
     const existingSessionIndex = history.findIndex(session => session.id === newSessionId);
 
@@ -220,7 +220,7 @@ export default function ChatPage() {
     } else {
       history.unshift(sessionToSave);
     }
-    
+
     saveChatHistory(history.slice(0, 50)); // Limit history size
     setCurrentSessionId(newSessionId);
     return newSessionId;
@@ -250,7 +250,7 @@ export default function ChatPage() {
         }
     }
   }, []);
-  
+
   const loadChatSession = useCallback((sessionId: string) => {
     const history = getChatHistory();
     const session = history.find(s => s.id === sessionId);
@@ -265,9 +265,9 @@ export default function ChatPage() {
       toast({ title: sessionLang === 'Polish' ? 'Czat Załadowany' : 'Chat Loaded', description: `${sessionLang === 'Polish' ? 'Załadowano' : 'Loaded'} "${session.name}".` });
     } else {
       toast({ title: 'Błąd', description: currentLanguage === 'Polish' ? 'Nie znaleziono sesji czatu.' : 'Chat session not found.', variant: 'destructive' });
-      setMessages([]); 
+      setMessages([]);
       setCurrentSessionId(null);
-      addInitialGreetingIfNeeded([], currentLanguage); 
+      addInitialGreetingIfNeeded([], currentLanguage);
     }
   }, [toast, getChatHistory, currentLanguage, addInitialGreetingIfNeeded]);
 
@@ -294,7 +294,7 @@ export default function ChatPage() {
       }
     }
     setInputValue('');
-    setCurrentSessionId(null); 
+    setCurrentSessionId(null);
     const greetingMessage: Message = {
       id: LUNAFREYA_GREETING_ID,
       role: 'ai',
@@ -302,7 +302,7 @@ export default function ChatPage() {
       timestamp: new Date(),
     };
     // Keep recent autonomous messages if any
-    setMessages(prev => [greetingMessage, ...prev.filter(m => m.isAutonomous && m.timestamp.getTime() > Date.now() - 5*60*1000)]); 
+    setMessages(prev => [greetingMessage, ...prev.filter(m => m.isAutonomous && m.timestamp.getTime() > Date.now() - 5*60*1000)]);
     router.push('/chat', { scroll: false });
   };
 
@@ -331,7 +331,7 @@ export default function ChatPage() {
          setInputValue(prev => {
             // This logic for updating interim results might need refinement
             // For simplicity, focusing on final transcript for now if interim is tricky
-            if (interimTranscript && prev.endsWith(interimTranscript.slice(0,-1))) { 
+            if (interimTranscript && prev.endsWith(interimTranscript.slice(0,-1))) {
                 return prev.slice(0, prev.length - interimTranscript.length +1) + interimTranscript;
             }
             return prev + interimTranscript;
@@ -342,7 +342,7 @@ export default function ChatPage() {
       };
       recognition.onerror = (event) => {
         console.error('Speech recognition error', event.error);
-        const errorDesc = currentLanguage === 'Polish' 
+        const errorDesc = currentLanguage === 'Polish'
           ? (event.error === 'no-speech' ? 'Nie wykryto mowy.' : 'Wystąpił błąd podczas rozpoznawania mowy.')
           : (event.error === 'no-speech' ? 'No speech detected.' : 'Error during speech recognition.');
         toast({ title: currentLanguage === 'Polish' ? 'Błąd Rozpoznawania Mowy' : 'Speech Recognition Error', description: errorDesc, variant: 'destructive' });
@@ -387,42 +387,41 @@ export default function ChatPage() {
       let targetVoice: SpeechSynthesisVoice | undefined;
 
       if (currentLanguage === 'Polish') {
-        targetVoice = voices.find(voice =>
-          voice.lang.startsWith('pl') &&
-          (voice.name.toLowerCase().includes('female') ||
-           voice.name.toLowerCase().includes('kobieta') ||
-           voice.name.toLowerCase().includes('dziewczyna') ||
-           voice.name.toLowerCase().includes('zosia') || 
-           voice.name.toLowerCase().includes('ewa') ||
-           voice.name.toLowerCase().includes('agata') ||
-           voice.name.toLowerCase().includes('paulina')
-          )
-        ) || voices.find(voice => voice.lang.startsWith('pl'));
+        const microsoftPaulina = voices.find(voice => voice.lang.startsWith('pl') && voice.name.toLowerCase().includes('microsoft paulina online'));
+        const anyPaulina = voices.find(voice => voice.lang.startsWith('pl') && voice.name.toLowerCase().includes('paulina'));
+        const polishFemaleNames = ['paulina', 'zosia', 'ewa', 'agata', 'anna', 'magda', 'hanna']; // Paulina is already prioritized
+        
+        targetVoice = microsoftPaulina || anyPaulina ||
+          voices.find(voice => voice.lang.startsWith('pl') && polishFemaleNames.some(name => voice.name.toLowerCase().includes(name))) ||
+          voices.find(voice => voice.lang.startsWith('pl') && (voice.name.toLowerCase().includes('kobieta') || voice.name.toLowerCase().includes('female')));
       } else { // English
-         targetVoice = voices.find(voice =>
-          voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female') && 
-          (voice.name.toLowerCase().includes('juniper') || voice.name.toLowerCase().includes('female')) // Try for Juniper-like or any female
-        ) || voices.find(voice => voice.lang.startsWith('en-US') && voice.name.toLowerCase().includes('female')) 
-          || voices.find(voice => voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female'));
+        targetVoice =
+          voices.find(voice => voice.lang.startsWith('en') && voice.name.toLowerCase().includes('juniper')) ||
+          voices.find(voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('female')) ||
+          voices.find(voice => voice.lang === 'en-GB' && voice.name.toLowerCase().includes('female')) ||
+          voices.find(voice => voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female'));
       }
-      
+
       if (targetVoice) {
         utterance.voice = targetVoice;
       } else {
-         // Fallback to first available voice for the language if specific female not found
-        const fallbackVoice = voices.find(voice => voice.lang === utterance.lang);
-        if (fallbackVoice) utterance.voice = fallbackVoice;
+        let fallbackVoice = voices.find(voice => voice.lang === utterance.lang);
+        if (!fallbackVoice) {
+          fallbackVoice = voices.find(voice => voice.lang.startsWith(utterance.lang.substring(0, 2)));
+        }
+        if (fallbackVoice) {
+          utterance.voice = fallbackVoice;
+        }
       }
-      
+
       window.speechSynthesis.speak(utterance);
     } else {
       toast({ title: currentLanguage === 'Polish' ? 'Synteza Mowy Nieobsługiwana' : 'Speech Synthesis Not Supported', description: currentLanguage === 'Polish' ? 'Twoja przeglądarka nie obsługuje syntezy mowy.' : 'Your browser does not support speech synthesis.', variant: 'destructive' });
     }
   };
-  
+
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      // Ensure voices are loaded, especially on some browsers
       if (speechSynthesis.getVoices().length === 0) {
         speechSynthesis.onvoiceschanged = () => { /* Voices loaded */ };
       }
@@ -438,10 +437,10 @@ export default function ChatPage() {
     if (nonAutonomousMessages.length === 1 && nonAutonomousMessages[0].id === LUNAFREYA_GREETING_ID) {
       updatedMessages = updatedMessages.filter(m => m.id !== LUNAFREYA_GREETING_ID);
     }
-    
+
     const userMessage: Message = { id: Date.now().toString(), role: 'user', text: textToSend, timestamp: new Date() };
     updatedMessages.push(userMessage);
-    
+
     setMessages(updatedMessages);
     setInputValue('');
     setIsLoading(true);
@@ -479,8 +478,8 @@ export default function ChatPage() {
                 )}
                 <div className={cn(
                   'max-w-[70%] rounded-xl p-3 shadow-md',
-                  msg.role === 'user' ? 'bg-primary text-primary-foreground' : 
-                  (msg.isError ? 'bg-destructive text-destructive-foreground' : 
+                  msg.role === 'user' ? 'bg-primary text-primary-foreground' :
+                  (msg.isError ? 'bg-destructive text-destructive-foreground' :
                   (msg.isAutonomous ? 'bg-accent text-accent-foreground opacity-90 italic' : 'bg-card')),
                   msg.isError && 'border border-destructive/50',
                   msg.isAutonomous && 'border border-dashed border-primary/50'
@@ -515,7 +514,7 @@ export default function ChatPage() {
             )}
           </div>
         </ScrollArea>
-        
+
         <div className="border-t p-4 space-y-3">
            <div className="flex flex-wrap gap-2 justify-start items-center">
                 <Select value={currentLanguage} onValueChange={(value: string) => handleLanguageChange(value as ChatLanguage)}>
@@ -545,7 +544,7 @@ export default function ChatPage() {
                         aria-label="Toggle autonomous updates"
                     />
                     <Label htmlFor="autonomous-mode" className="text-sm flex items-center text-muted-foreground">
-                        <Power size={14} className={cn("mr-1.5", isAutonomousModeEnabled ? "text-primary" : "text-muted-foreground")} /> 
+                        <Power size={14} className={cn("mr-1.5", isAutonomousModeEnabled ? "text-primary" : "text-muted-foreground")} />
                         {currentLanguage === 'Polish' ? 'Tryb Autonomiczny' : 'Autonomous Mode'}
                     </Label>
                 </div>
