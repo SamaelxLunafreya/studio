@@ -25,9 +25,13 @@ export async function getAutonomousUpdate(input: GetAutonomousUpdateInput): Prom
   return getAutonomousUpdateFlow(input);
 }
 
+const AutonomousUpdatePromptInternalSchema = GetAutonomousUpdateInputSchema.extend({
+    isPolish: z.boolean().describe("Internal flag: true if language is Polish.")
+});
+
 const autonomousUpdatePrompt = ai.definePrompt({
   name: 'autonomousUpdatePrompt',
-  input: { schema: GetAutonomousUpdateInputSchema },
+  input: { schema: AutonomousUpdatePromptInternalSchema },
   output: {schema: AutonomousUpdateOutputSchema},
   prompt: `You are Lunafreya, an AI assistant. The user has enabled autonomous updates.
 Offer a very brief, interesting, and varied proactive message. This could be:
@@ -38,7 +42,7 @@ Offer a very brief, interesting, and varied proactive message. This could be:
 - A simple creative prompt or a 'what if' scenario.
 Keep it concise, under 20 words.
 
-{{#if (eq language "Polish")}}
+{{#if isPolish}}
 Odpowiedz po polsku.
 Przykłady:
 - "Czy wiesz, że niebo nie zawsze jest niebieskie na innych planetach?"
@@ -70,25 +74,28 @@ const getAutonomousUpdateFlow = ai.defineFlow(
   },
   async (input: GetAutonomousUpdateInput): Promise<AutonomousUpdateOutput> => {
     let thoughtToShow: string;
+    const isPolishLanguage = input.language === 'Polish';
 
     try {
-      const {output} = await autonomousUpdatePrompt(input);
+      const {output} = await autonomousUpdatePrompt({
+          language: input.language,
+          isPolish: isPolishLanguage,
+      });
       if (output && typeof output.thought === 'string' && output.thought.trim() !== '') {
         thoughtToShow = output.thought;
       } else {
         console.warn('Autonomous update prompt returned invalid or empty thought. Using fallback.');
-        thoughtToShow = input.language === 'Polish'
+        thoughtToShow = isPolishLanguage
           ? "Chwileczkę, zbieram myśli..."
           : "Just a moment, collecting my thoughts...";
       }
     } catch (error) {
       console.error('Error in autonomousUpdatePrompt within getAutonomousUpdateFlow:', error);
       // Provide a more specific fallback if an error occurs during the AI call
-      thoughtToShow = input.language === 'Polish'
+      thoughtToShow = isPolishLanguage
         ? "Coś poszło nie tak z moimi myślami tym razem. Spróbuję później!"
         : "Something went wrong with my thoughts this time. I'll try again later!";
     }
     return { thought: thoughtToShow };
   }
 );
-
