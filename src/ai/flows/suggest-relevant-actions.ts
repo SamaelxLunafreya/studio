@@ -51,11 +51,11 @@ export async function suggestRelevantActions(
 
 const suggestRelevantActionsPrompt = ai.definePrompt({
   name: 'suggestRelevantActionsPrompt',
-  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: SuggestRelevantActionsInputSchema},
   output: {schema: SuggestRelevantActionsOutputSchema},
   tools: [searchGoogleDriveTool, searchGitHubIssuesTool, getGitHubRepoFileContentTool], // Make tools available
-  system: `Based on the current conversation context: {{{conversationContext}}} and the user's goals: {{{userGoals}}}, suggest a list of 3-4 relevant actions the user can take.
+  prompt: `Based on the current conversation context: {{{conversationContext}}} and the user's goals: {{{userGoals}}}, suggest a list of 3-4 relevant actions the user can take.
   Return the actions as a list of strings in the 'suggestedActions' field. Each string should be a concise, actionable phrase.
 
   Consider actions like:
@@ -125,3 +125,4 @@ const suggestRelevantActionsFlow = ai.defineFlow(
     };
   }
 );
+
