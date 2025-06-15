@@ -41,6 +41,7 @@ import { ThemeProvider } from '@/components/theme-provider'; // To be created
 export const metadata: Metadata = {
   title: 'Lunafreya Google Cloud AI',
   description: 'Collaborative AI for deep thinking and creative reasoning.',
+  icons: [], // Explicitly set to empty array
 };
 
 const navItems = [
@@ -79,17 +80,14 @@ export default function RootLayout({
                 <SidebarMenu>
                   {navItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                      <Link href={item.href} legacyBehavior passHref>
+                      <Link href={item.href}>
                         <SidebarMenuButton
                           tooltip={{ children: item.label, side: 'right', align: 'center' }}
                           className="w-full justify-start"
-                          asChild
                         >
-                          <a>
-                            <item.icon />
-                            <span>{item.label}</span>
-                            {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
-                          </a>
+                          <item.icon />
+                          <span>{item.label}</span>
+                          {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
                         </SidebarMenuButton>
                       </Link>
                     </SidebarMenuItem>
@@ -97,19 +95,16 @@ export default function RootLayout({
                 </SidebarMenu>
               </SidebarContent>
               <SidebarFooter className="p-2">
-                 <Link href="/settings" legacyBehavior passHref>
-                  <SidebarMenuButton 
+                 <Link href="/settings">
+                  <SidebarMenuButton
                     tooltip={{ children: 'User Settings', side: 'right', align: 'center' }}
                     className="w-full justify-start"
-                    asChild
                   >
-                    <a>
-                      <Avatar className="h-7 w-7">
-                        <AvatarImage src="https://placehold.co/40x40.png" alt="User Avatar" data-ai-hint="user avatar" />
-                        <AvatarFallback>UA</AvatarFallback>
-                      </Avatar>
-                      <span className="group-data-[collapsible=icon]:hidden">User Account</span>
-                    </a>
+                    <Avatar className="h-7 w-7">
+                      <AvatarImage src="https://placehold.co/40x40.png" alt="User Avatar" data-ai-hint="user avatar" />
+                      <AvatarFallback>UA</AvatarFallback>
+                    </Avatar>
+                    <span className="group-data-[collapsible=icon]:hidden">User Account</span>
                   </SidebarMenuButton>
                 </Link>
               </SidebarFooter>
