@@ -7,8 +7,8 @@ import {
   Code,
   Search,
   SettingsIcon,
-  LayoutDashboard, // Replaced Lightbulb
-  History, // Added for Chat History
+  LayoutDashboard,
+  History,
   Moon,
   Sun,
   Github,
@@ -16,6 +16,11 @@ import {
   FileText,
   Brain,
   Users,
+  PenTool, // For Text Enhancer
+  TerminalSquare, // For Code Generator
+  Globe, // For Web Search
+  Palette, // For Workspace
+  Cog, // For Settings
 } from 'lucide-react';
 
 import './globals.css';
@@ -47,11 +52,12 @@ export const metadata: Metadata = {
 const navItems = [
   { href: '/chat', icon: MessageCircle, label: 'AI Chat', badge: 'Beta' },
   { href: '/chat-history', icon: History, label: 'Chat History' },
+  { href: '/workspace', icon: Palette, label: 'Workspace' },
   { href: '/memory-upload', icon: UploadCloud, label: 'Memory Upload' },
-  { href: '/text-enhancer', icon: Edit3, label: 'Text Enhancer' },
-  { href: '/code-generator', icon: Code, label: 'Code Generator' },
-  { href: '/web-search', icon: Search, label: 'Web Search' },
-  { href: '/settings', icon: SettingsIcon, label: 'Settings' },
+  { href: '/text-enhancer', icon: PenTool, label: 'Text Enhancer' },
+  { href: '/code-generator', icon: TerminalSquare, label: 'Code Generator' },
+  { href: '/web-search', icon: Globe, label: 'Web Search' },
+  { href: '/settings', icon: Cog, label: 'Settings' },
 ];
 
 export default function RootLayout({

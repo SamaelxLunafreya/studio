@@ -8,3 +8,4 @@ import '@/ai/flows/suggest-relevant-actions.ts';
 import '@/ai/flows/initial-prompt-setup.ts';
 import '@/ai/flows/generate-code-snippets.ts';
 import '@/ai/flows/ai-assisted-web-search.ts';
+import '@/ai/flows/collaborative-workspace-flow.ts';
