@@ -12,7 +12,9 @@ import '@/ai/flows/ai-assisted-web-search.ts';
 import '@/ai/flows/collaborative-workspace-flow.ts';
 import '@/ai/flows/generate-image-flow.ts';
 import '@/ai/flows/translate-text-flow.ts';
-import '@/ai/flows/get-autonomous-update-flow.ts'; // Register new autonomous update flow
+import '@/ai/flows/get-autonomous-update-flow.ts'; 
+import '@/ai/flows/generate-casual-greeting-flow.ts'; // Register new casual greeting flow
 import '@/ai/tools/google-drive-tool.ts';
-import '@/ai/tools/github-tool.ts'; // Register new GitHub tool
+import '@/ai/tools/github-tool.ts';
+
 
