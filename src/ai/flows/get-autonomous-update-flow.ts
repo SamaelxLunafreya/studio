@@ -1,3 +1,4 @@
+
 // src/ai/flows/get-autonomous-update-flow.ts
 'use server';
 /**
@@ -41,7 +42,17 @@ const getAutonomousUpdateFlow = ai.defineFlow(
     outputSchema: AutonomousUpdateOutputSchema,
   },
   async () => {
-    const {output} = await autonomousUpdatePrompt({}); // No specific input passed
-    return output!;
+    try {
+      const {output} = await autonomousUpdatePrompt({}); // No specific input passed
+      if (output?.thought) {
+        return output;
+      }
+      console.warn('Autonomous update prompt did not return a valid thought. Using fallback.');
+    } catch (error) {
+      console.error('Error in autonomousUpdatePrompt within getAutonomousUpdateFlow:', error);
+    }
+    // Fallback response if the prompt fails or doesn't return valid output
+    return { thought: "Just a moment, collecting my thoughts..." };
   }
 );
+
