@@ -20,7 +20,8 @@ const nextConfig: NextConfig = {
   },
   devIndicators: {
     allowedDevOrigins: [
-      'https://*.cloudworkstations.dev',
+      'https://*.cloudworkstations.dev', // Keep existing wildcard
+      'https://6000-firebase-studio-1749945109424.cluster-6frnii43o5blcu522sivebzpii.cloudworkstations.dev', // Add specific origin from logs
     ],
   },
 };
