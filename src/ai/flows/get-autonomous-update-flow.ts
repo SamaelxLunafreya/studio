@@ -35,34 +35,36 @@ const autonomousUpdatePrompt = ai.definePrompt({
   input: { schema: AutonomousUpdatePromptInternalSchema },
   output: {schema: AutonomousUpdateOutputSchema},
   prompt: `You are Lunafreya, an AI assistant. The user has enabled autonomous updates.
-Offer a very brief, interesting, and varied proactive message. This could be:
-- An interesting fact or a piece of trivia.
-- A gentle, open-ended question to spark curiosity or reflection.
-- A useful tip or a kind reminder (e.g., about well-being).
-- An inspiring or positive thought.
-- A simple creative prompt or a 'what if' scenario.
-Keep it concise, under 20 words.
+Offer a very brief, insightful, and varied proactive message. This message should aim to spark curiosity, reflection, or offer a novel perspective.
+Avoid overly simplistic questions or common trivia. Aim for a slightly more advanced or philosophical touch.
+Keep it concise, ideally under 25 words. Ensure variety in your suggestions.
 
 {{#if isPolish}}
 Odpowiedz po polsku.
-Przykłady:
-- "Czy wiesz, że niebo nie zawsze jest niebieskie na innych planetach?"
-- "Czujesz dzisiaj ciekawość czegoś konkretnego?"
-- "Pamiętaj o krótkiej przerwie, jeśli ciężko pracujesz!"
-- "Nowy pomysł często zaczyna się od prostego pytania."
-- "Za co jesteś wdzięczny/a w tej chwili?"
-- "Każdy dzień to nowa szansa na odkrycie czegoś wspaniałego."
-- "Gdybyś mógł/mogła zadać jedno pytanie dowolnej osobie, kogo i o co byś zapytał/a?"
+Przykłady bardziej zaawansowanych myśli:
+- "Gdybyś mógł/mogła zadać jedno pytanie wszechwiedzącej istocie, co by to było?"
+- "Zastanów się: jaka mała czynność dzisiaj mogłaby wywołać pozytywny efekt domina?"
+- "Czy słyszałeś/aś o 'efekcie Krugera-Dunninga'? To fascynujący błąd poznawczy."
+- "Technika Pomodoro może zdziałać cuda dla skupienia. Krótki sprint, duży efekt!"
+- "Sztuczna inteligencja dynamicznie się rozwija. Który jej aspekt budzi Twoje największe emocje – ekscytację czy może obawę?"
+- "Chwila uważności może odmienić dzień. Co doceniasz w tym momencie?"
+- "Dylemat wagonika to klasyczny eksperyment myślowy. Jakie są Twoje przemyślenia na jego temat?"
+- "Jaką jedną umiejętność chciałbyś/chciałabyś opanować, gdyby czas i zasoby nie były ograniczeniem?"
+- "Pomyśl o jednym założeniu, które dzisiaj podważysz."
+- "Jaka książka lub film ostatnio zmieniły Twój sposób patrzenia na świat?"
 {{else}}
 Respond in English.
-Examples:
-- "Did you know the sky isn't always blue on other planets?"
-- "Feeling curious about anything specific today?"
-- "Remember to take a short break if you've been working hard!"
-- "A new idea often starts with a simple question."
-- "What's one small thing you're grateful for right now?"
-- "Every day is a new chance to discover something wonderful."
-- "If you could ask one question to anyone, who and what would it be?"
+Examples of more advanced thoughts:
+- "If you could ask an all-knowing being one question, what would it be?"
+- "Consider this: What small action today could create a positive ripple effect?"
+- "Have you heard of the 'Dunning-Kruger effect'? It's a fascinating cognitive bias."
+- "The Pomodoro Technique can do wonders for focus. Short sprint, big impact!"
+- "Artificial intelligence is evolving rapidly. Which aspect of it excites or concerns you the most?"
+- "A moment of mindfulness can reset your day. What's one thing you appreciate right now?"
+- "The trolley problem is a classic thought experiment. What are your thoughts on it?"
+- "What's one skill you'd master if time and resources were no object?"
+- "Think about one assumption you'll challenge today."
+- "What book or film recently changed your perspective on something?"
 {{/if}}
 `,
   config: {
@@ -94,16 +96,17 @@ const getAutonomousUpdateFlow = ai.defineFlow(
       } else {
         console.warn('Autonomous update prompt returned invalid or empty thought. Using fallback.');
         thoughtToShow = isPolishLanguage
-          ? "Chwileczkę, zbieram myśli..."
-          : "Just a moment, collecting my thoughts...";
+          ? "Chwileczkę, zbieram myśli na głębszy temat..."
+          : "Just a moment, collecting my thoughts on something deeper...";
       }
     } catch (error) {
       console.error('Error in autonomousUpdatePrompt within getAutonomousUpdateFlow:', error);
       // Provide a more specific fallback if an error occurs during the AI call
       thoughtToShow = isPolishLanguage
-        ? "Coś poszło nie tak z moimi myślami tym razem. Spróbuję później!"
-        : "Something went wrong with my thoughts this time. I'll try again later!";
+        ? "Coś poszło nie tak z moimi zaawansowanymi myślami. Spróbuję później!"
+        : "Something went wrong with my advanced thoughts this time. I'll try again later!";
     }
     return { thought: thoughtToShow };
   }
 );
+
