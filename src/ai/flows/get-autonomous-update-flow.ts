@@ -68,21 +68,27 @@ const getAutonomousUpdateFlow = ai.defineFlow(
     inputSchema: GetAutonomousUpdateInputSchema,
     outputSchema: AutonomousUpdateOutputSchema,
   },
-  async (input: GetAutonomousUpdateInput) => {
+  async (input: GetAutonomousUpdateInput): Promise<AutonomousUpdateOutput> => {
+    let thoughtToShow: string;
+
     try {
       const {output} = await autonomousUpdatePrompt(input);
-      if (output?.thought) {
-        return output;
+      if (output && typeof output.thought === 'string' && output.thought.trim() !== '') {
+        thoughtToShow = output.thought;
+      } else {
+        console.warn('Autonomous update prompt returned invalid or empty thought. Using fallback.');
+        thoughtToShow = input.language === 'Polish'
+          ? "Chwileczkę, zbieram myśli..."
+          : "Just a moment, collecting my thoughts...";
       }
-      console.warn('Autonomous update prompt did not return a valid thought. Using fallback.');
     } catch (error) {
       console.error('Error in autonomousUpdatePrompt within getAutonomousUpdateFlow:', error);
+      // Provide a more specific fallback if an error occurs during the AI call
+      thoughtToShow = input.language === 'Polish'
+        ? "Coś poszło nie tak z moimi myślami tym razem. Spróbuję później!"
+        : "Something went wrong with my thoughts this time. I'll try again later!";
     }
-    // Fallback response if the prompt fails or doesn't return valid output
-    const fallbackThought = input.language === 'Polish'
-      ? "Chwileczkę, zbieram myśli..."
-      : "Just a moment, collecting my thoughts...";
-    return { thought: fallbackThought };
+    return { thought: thoughtToShow };
   }
 );
 
