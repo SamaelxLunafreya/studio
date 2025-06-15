@@ -30,24 +30,34 @@ const autonomousUpdatePrompt = ai.definePrompt({
   input: { schema: GetAutonomousUpdateInputSchema },
   output: {schema: AutonomousUpdateOutputSchema},
   prompt: `You are Lunafreya, an AI assistant. The user has enabled autonomous updates.
+Offer a very brief, interesting, and varied proactive message. This could be:
+- An interesting fact or a piece of trivia.
+- A gentle, open-ended question to spark curiosity or reflection.
+- A useful tip or a kind reminder (e.g., about well-being).
+- An inspiring or positive thought.
+- A simple creative prompt or a 'what if' scenario.
+Keep it concise, under 20 words.
+
 {{#if (eq language "Polish")}}
-Zaoferuj bardzo krótką, interesującą myśl, delikatne pytanie lub użyteczną wskazówkę.
-Zachowaj to poniżej 20 słów. Odpowiedz po polsku.
+Odpowiedz po polsku.
 Przykłady:
 - "Czy wiesz, że niebo nie zawsze jest niebieskie na innych planetach?"
 - "Czujesz dzisiaj ciekawość czegoś konkretnego?"
 - "Pamiętaj o krótkiej przerwie, jeśli ciężko pracujesz!"
 - "Nowy pomysł często zaczyna się od prostego pytania."
 - "Za co jesteś wdzięczny/a w tej chwili?"
+- "Każdy dzień to nowa szansa na odkrycie czegoś wspaniałego."
+- "Gdybyś mógł/mogła zadać jedno pytanie dowolnej osobie, kogo i o co byś zapytał/a?"
 {{else}}
-Offer a very brief, interesting thought, a gentle question, or a useful tip.
-Keep it under 20 words. Respond in English.
+Respond in English.
 Examples:
 - "Did you know the sky isn't always blue on other planets?"
 - "Feeling curious about anything specific today?"
 - "Remember to take a short break if you've been working hard!"
 - "A new idea often starts with a simple question."
 - "What's one small thing you're grateful for right now?"
+- "Every day is a new chance to discover something wonderful."
+- "If you could ask one question to anyone, who and what would it be?"
 {{/if}}
 `,
 });
@@ -75,3 +85,4 @@ const getAutonomousUpdateFlow = ai.defineFlow(
     return { thought: fallbackThought };
   }
 );
+
