@@ -147,11 +147,11 @@ export default function ChatPage() {
     const meaningfulMessages = currentMessages.filter(m => m.id !== LUNAFREYA_GREETING_ID && !m.isAutonomous);
     if (meaningfulMessages.length === 0) return null;
 
-    const history = getChatHistory();
     let newSessionId = currentSessionId || Date.now().toString();
     const firstUserMessage = meaningfulMessages.find(m => m.role === 'user');
     const sessionName = firstUserMessage?.text.substring(0, 50) || `Chat - ${new Date(meaningfulMessages[0].timestamp).toLocaleString()}`;
     
+    const history = getChatHistory();
     const existingSessionIndex = history.findIndex(session => session.id === newSessionId);
 
     const sessionToSave: SavedChatSession = {
@@ -298,19 +298,62 @@ export default function ChatPage() {
         window.speechSynthesis.cancel();
       }
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
+      utterance.lang = 'en-US'; // Ensure English (US) for pronunciation
+
+      // Attempt to find and set a female English voice
+      const voices = window.speechSynthesis.getVoices();
+      const femaleEnglishVoice = voices.find(voice => 
+        voice.lang.startsWith('en') && 
+        (voice.name.toLowerCase().includes('female') || 
+         voice.name.toLowerCase().includes('woman') || 
+         voice.name.toLowerCase().includes('girl') ||
+         // Common default female voice names
+         voice.name.includes('Susan') || voice.name.includes('Samantha') || 
+         voice.name.includes('Karen') || voice.name.includes('Zira') ||
+         voice.name.includes('Moira'))
+      );
+
+      if (femaleEnglishVoice) {
+        utterance.voice = femaleEnglishVoice;
+      } else {
+        // Fallback: try any English voice if a specific female one isn't found
+        const anyEnglishVoice = voices.find(voice => voice.lang.startsWith('en'));
+        if (anyEnglishVoice) {
+          utterance.voice = anyEnglishVoice;
+        }
+      }
+      
       window.speechSynthesis.speak(utterance);
     } else {
       toast({ title: 'Text-to-Speech Not Supported', description: 'Your browser does not support speech synthesis.', variant: 'destructive' });
     }
   };
+  
+  // Preload voices if they are not loaded immediately
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      if (speechSynthesis.getVoices().length === 0) {
+        speechSynthesis.onvoiceschanged = () => {
+          // Voices are now loaded
+        };
+      }
+    }
+  }, []);
+
 
   const fetchSuggestions = useCallback(async (context: string) => {
     const userGoals = "Engage in a productive and insightful conversation.";
     const result = await getIntelligentSuggestionsAction(context, userGoals);
     if ('error' in result) {
-      console.error("Failed to fetch suggestions:", result.error);
-      setSuggestions([]);
+      // The flow now returns fallback suggestions, so direct error toast is less likely for "no suggestions"
+      // console.error("Failed to fetch suggestions:", result.error); 
+      // Fallback handled within the flow, but if action itself fails:
+      if (result.suggestedActions && result.suggestedActions.length > 0){
+        setSuggestions(result.suggestedActions.slice(0,3));
+      } else {
+        console.error("Failed to fetch suggestions:", result.error);
+        setSuggestions([]); // Clear suggestions if error is critical
+      }
     } else {
       setSuggestions(result.suggestedActions.slice(0, 3));
     }
