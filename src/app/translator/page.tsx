@@ -31,11 +31,12 @@ const targetLanguages = [
   { value: "Chinese (Simplified)", label: "Chinese (Simplified)" },
   { value: "Russian", label: "Russian" },
   { value: "Arabic", label: "Arabic" },
+  { value: "Polish", label: "Polish" },
 ];
 
 export default function TranslatorPage() {
   const [inputText, setInputText] = useState('');
-  const [targetLanguage, setTargetLanguage] = useState('Spanish');
+  const [targetLanguage, setTargetLanguage] = useState('Polish');
   const [translatedText, setTranslatedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
