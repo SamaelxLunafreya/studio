@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -24,6 +25,7 @@ export default function CodeGeneratorPage() {
   const [generatedOutput, setGeneratedOutput] = useState<{ code: string; explanation: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasCopiedCode, setHasCopiedCode] = useState(false);
+  const [hasCopiedExplanation, setHasCopiedExplanation] = useState(false);
   const { toast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -66,9 +68,11 @@ export default function CodeGeneratorPage() {
     if (!textToCopy) return;
     navigator.clipboard.writeText(textToCopy).then(() => {
       if (type === 'code') setHasCopiedCode(true);
+      if (type === 'explanation') setHasCopiedExplanation(true);
       toast({ title: 'Copied!', description: `${type === 'code' ? 'Code' : 'Explanation'} copied to clipboard.` });
       setTimeout(() => {
         if (type === 'code') setHasCopiedCode(false);
+        if (type === 'explanation') setHasCopiedExplanation(false);
       }, 2000);
     }).catch(err => {
       toast({ title: 'Copy Failed', description: `Could not copy ${type}.`, variant: 'destructive' });
@@ -178,7 +182,13 @@ export default function CodeGeneratorPage() {
                   </ScrollArea>
                 </div>
                 <div>
-                  <h3 className="font-headline text-xl mb-2">Explanation</h3>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-headline text-xl">Explanation</h3>
+                    <Button variant="ghost" size="sm" onClick={() => handleCopyToClipboard(generatedOutput.explanation, 'explanation')} disabled={!generatedOutput.explanation}>
+                      {hasCopiedExplanation ? <ClipboardCheck className="mr-2 h-4 w-4" /> : <ClipboardCopy className="mr-2 h-4 w-4" />}
+                      {hasCopiedExplanation ? 'Copied!' : 'Copy Explanation'}
+                    </Button>
+                  </div>
                   <ScrollArea className="h-40 rounded-md border bg-muted/30 p-4">
                     <p className="text-sm whitespace-pre-wrap">{generatedOutput.explanation}</p>
                   </ScrollArea>
@@ -191,3 +201,4 @@ export default function CodeGeneratorPage() {
     </>
   );
 }
+
