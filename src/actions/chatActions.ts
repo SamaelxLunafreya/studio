@@ -6,7 +6,7 @@ import { suggestRelevantActions, type SuggestRelevantActionsInput, type SuggestR
 import { getAutonomousUpdate, type GetAutonomousUpdateInput, type AutonomousUpdateOutput } from '@/ai/flows/get-autonomous-update-flow';
 import { generateCasualGreeting, type GenerateCasualGreetingInput, type GenerateCasualGreetingOutput } from '@/ai/flows/generate-casual-greeting-flow';
 
-const simplePolishGreetings = ["hej", "hejka", "cześć", "czesc", "siema", "witaj", "elo"]; // Keep lowercase for comparison
+const simplePolishGreetings = ["hej", "hejka", "cześć", "czesc", "siema", "witaj", "elo"]; // Keep lowercase for comparison
 
 export async function handleChatMessageAction(userInput: string, language: 'Polish' | 'English'): Promise<CollaborateWithAiOutput | { error: string }> {
   try {
@@ -34,9 +34,9 @@ export async function handleChatMessageAction(userInput: string, language: 'Poli
     };
     const result = await collaborateWithAi(input);
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in handleChatMessageAction:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error in chat processing.';
     return { error: `Failed to get AI response: ${errorMessage}. Please try again.` };
   }
 }
@@ -47,25 +47,27 @@ export async function getIntelligentSuggestionsAction(conversationContext: strin
       conversationContext,
       userGoals,
     };
-    const result = await suggestRelevantActions(input);
+    // The 'suggestRelevantActions' flow is designed to handle its own errors and return SuggestRelevantActionsOutput
+    const result: SuggestRelevantActionsOutput = await suggestRelevantActions(input);
     return result;
-  } catch (error) {
-    console.error('Error in getIntelligentSuggestionsAction:', error);
-    // Ensure fallback returns the expected structure
-    if (error instanceof Error && (error as any).suggestedActions) {
-       return { suggestedActions: (error as any).suggestedActions };
-    }
-    return { error: 'Failed to get suggestions.' };
+  } catch (error: any) {
+    // This catch block is a fallback for truly unexpected errors from the flow itself.
+    console.error('Critical error in getIntelligentSuggestionsAction or underlying suggestRelevantActions flow:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error while fetching suggestions.';
+    return { error: `Failed to get suggestions: ${errorMessage}` };
   }
 }
 
 export async function getAutonomousUpdateAction(language: 'Polish' | 'English'): Promise<AutonomousUpdateOutput | { error: string }> {
   try {
     const input: GetAutonomousUpdateInput = { language };
-    const result = await getAutonomousUpdate(input);
+    // The 'getAutonomousUpdate' flow is designed to handle its own errors and return AutonomousUpdateOutput
+    const result: AutonomousUpdateOutput = await getAutonomousUpdate(input);
     return result;
-  } catch (error) {
-    console.error('Error in getAutonomousUpdateAction:', error);
-    return { error: 'Failed to get autonomous update.' };
+  } catch (error: any) {
+    // This catch block is a fallback for truly unexpected errors from the flow itself.
+    console.error('Critical error in getAutonomousUpdateAction or underlying getAutonomousUpdate flow:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error during autonomous update.';
+    return { error: `Failed to get autonomous update: ${errorMessage}` };
   }
 }

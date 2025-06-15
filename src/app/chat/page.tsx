@@ -147,6 +147,17 @@ export default function ChatPage() {
         description: lang === 'Polish' ? 'Lunafreya będzie teraz odpowiadać po polsku.' : 'Lunafreya will now respond in English.',
       });
     }
+    // When language changes, if there are no user messages, update greeting to new language
+    const nonAutonomousMessages = messages.filter(m => !m.isAutonomous && m.id !== LUNAFREYA_GREETING_ID);
+    if (nonAutonomousMessages.length === 0) {
+        const greetingMessage: Message = {
+            id: LUNAFREYA_GREETING_ID,
+            role: 'ai',
+            text: lang === 'Polish' ? INITIAL_GREETING_TEXT_POLISH : INITIAL_GREETING_TEXT_ENGLISH,
+            timestamp: new Date(),
+        };
+        setMessages(prev => [greetingMessage, ...prev.filter(m => m.isAutonomous)]);
+    }
   };
 
   const getChatHistory = useCallback((): SavedChatSession[] => {
@@ -209,9 +220,11 @@ export default function ChatPage() {
   }, [messages, currentSessionId, getChatHistory, currentLanguage]);
 
   const addInitialGreetingIfNeeded = useCallback((currentMessages: Message[], lang: ChatLanguage) => {
-    if (currentMessages.length === 0 || currentMessages.every(m => m.isAutonomous)) {
-       const nonAutonomousMessages = currentMessages.filter(m => !m.isAutonomous);
-        if (nonAutonomousMessages.length === 0) {
+    const nonAutonomousOrGreetingMessages = currentMessages.filter(m => !m.isAutonomous && m.id !== LUNAFREYA_GREETING_ID);
+    if (nonAutonomousOrGreetingMessages.length === 0) {
+        // Check if a greeting already exists, even if it's the only one.
+        const greetingExists = currentMessages.some(m => m.id === LUNAFREYA_GREETING_ID);
+        if (!greetingExists) {
             const greetingMessage: Message = {
                 id: LUNAFREYA_GREETING_ID,
                 role: 'ai',
@@ -219,6 +232,14 @@ export default function ChatPage() {
                 timestamp: new Date(),
             };
             setMessages(prev => [greetingMessage, ...prev.filter(m => m.isAutonomous)]);
+        } else {
+             // If greeting exists, ensure it's in the correct language
+            setMessages(prev => prev.map(m => {
+                if (m.id === LUNAFREYA_GREETING_ID) {
+                    return {...m, text: lang === 'Polish' ? INITIAL_GREETING_TEXT_POLISH : INITIAL_GREETING_TEXT_ENGLISH };
+                }
+                return m;
+            }));
         }
     }
   }, []);
@@ -251,12 +272,10 @@ export default function ChatPage() {
         loadChatSession(sessionIdFromUrl);
       }
     } else {
-      if (messages.filter(m => !m.isAutonomous).length === 0 && !currentSessionId) {
-         addInitialGreetingIfNeeded(messages, currentLanguage);
-      }
+      addInitialGreetingIfNeeded(messages, currentLanguage);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, loadChatSession, currentLanguage]); // Add currentLanguage dependency
+  }, [searchParams, loadChatSession, currentLanguage]);
 
 
   const handleNewChat = () => {
@@ -409,16 +428,13 @@ export default function ChatPage() {
     const userGoals = "Engage in a productive and insightful conversation."; 
     const result = await getIntelligentSuggestionsAction(context, userGoals);
     if ('error' in result) {
-      if (result.suggestedActions && result.suggestedActions.length > 0){
-        setSuggestions(result.suggestedActions.slice(0,3));
-      } else {
-        console.error("Failed to fetch suggestions:", result.error);
-        setSuggestions([]); 
-      }
+      console.error("Failed to fetch suggestions:", result.error);
+      // Optionally, provide some default/static suggestions on error
+      setSuggestions(currentLanguage === 'Polish' ? ["Spróbuj ponownie później", "Zapytaj o coś innego"] : ["Try again later", "Ask something different"]);
     } else {
       setSuggestions(result.suggestedActions.slice(0, 3));
     }
-  }, []);
+  }, [currentLanguage]);
 
   const handleSendMessage = useCallback(async (messageText?: string) => {
     const textToSend = (messageText || inputValue).trim();
