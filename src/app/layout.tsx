@@ -21,6 +21,8 @@ import {
   Globe, // For Web Search
   Palette, // For Workspace
   Cog, // For Settings
+  ImagePlay, // For Image Generator
+  Languages, // For Translator
 } from 'lucide-react';
 
 import './globals.css';
@@ -56,6 +58,8 @@ const navItems = [
   { href: '/memory-upload', icon: UploadCloud, label: 'Memory Upload' },
   { href: '/text-enhancer', icon: PenTool, label: 'Text Enhancer' },
   { href: '/code-generator', icon: TerminalSquare, label: 'Code Generator' },
+  { href: '/image-generator', icon: ImagePlay, label: 'Image Generator' },
+  { href: '/translator', icon: Languages, label: 'Translator' },
   { href: '/web-search', icon: Globe, label: 'Web Search' },
   { href: '/settings', icon: Cog, label: 'Settings' },
 ];

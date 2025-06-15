@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { History, Trash2, FileText, AlertTriangle, CheckCircle } from 'lucide-react';
+import { History, Trash2, FileText, AlertTriangle, CheckCircle, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,6 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { uploadToMemoryAction } from '@/actions/memoryActions';
 
 interface Message {
   id: string;
@@ -41,6 +43,7 @@ const CHAT_HISTORY_LOCAL_STORAGE_KEY = 'chatHistory';
 
 export default function ChatHistoryPage() {
   const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -50,7 +53,6 @@ export default function ChatHistoryPage() {
     if (historyJson) {
       try {
         const parsedHistory = JSON.parse(historyJson) as SavedChatSession[];
-        // Ensure timestamps are Date objects and sort by savedAt descending
         const processedHistory = parsedHistory.map(session => ({
           ...session,
           messages: session.messages.map(msg => ({
@@ -86,6 +88,31 @@ export default function ChatHistoryPage() {
     localStorage.removeItem(CHAT_HISTORY_LOCAL_STORAGE_KEY);
     setSavedSessions([]);
     toast({ title: "History Cleared", description: "All chat sessions have been deleted.", icon: <CheckCircle className="h-5 w-5" /> });
+  };
+
+  const handleArchiveSession = async (session: SavedChatSession) => {
+    setArchivingId(session.id);
+    const chatContent = session.messages.map(msg => `${msg.role === 'user' ? 'User' : 'AI'} (${new Date(msg.timestamp).toLocaleString()}): ${msg.text}`).join('\n\n');
+    const memoryInput = {
+      text: `Archived Chat Session: ${session.name}\nSaved At: ${new Date(session.savedAt).toLocaleString()}\n\n--- Chat Content ---\n${chatContent}`
+    };
+    
+    const result = await uploadToMemoryAction(memoryInput);
+    setArchivingId(null);
+
+    if (result && 'error' in result) {
+      toast({
+        title: "Archive Failed",
+        description: result.error,
+        variant: "destructive"
+      });
+    } else if (result) {
+      toast({
+        title: "Chat Archived",
+        description: `"${session.name}" has been archived to AI memory.`,
+        icon: <CheckCircle className="h-5 w-5" />
+      });
+    }
   };
 
   return (
@@ -124,7 +151,7 @@ export default function ChatHistoryPage() {
               )}
             </div>
             <CardDescription>
-              Review and manage your past conversations. Click on a session to load it.
+              Review, load, archive, or delete your past conversations.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -138,7 +165,7 @@ export default function ChatHistoryPage() {
                 </Button>
               </div>
             ) : (
-              <ScrollArea className="h-[calc(100vh-var(--header-height)-20rem)]"> {/* Adjust height as needed */}
+              <ScrollArea className="h-[calc(100vh-var(--header-height)-22rem)]">
                 <div className="space-y-4">
                   {savedSessions.map((session) => (
                     <Card key={session.id} className="hover:shadow-md transition-shadow">
@@ -179,11 +206,25 @@ export default function ChatHistoryPage() {
                           {session.messages[0]?.text || "No messages preview."}
                         </p>
                       </CardContent>
-                      <CardFooter className="pt-0">
-                        <Button asChild variant="outline" size="sm" className="w-full">
+                      <CardFooter className="pt-0 flex gap-2">
+                        <Button asChild variant="outline" size="sm" className="flex-1">
                           <Link href={`/chat?sessionId=${session.id}`}>
                             <FileText className="mr-2 h-4 w-4" /> Load Chat
                           </Link>
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => handleArchiveSession(session)}
+                          disabled={archivingId === session.id}
+                        >
+                          {archivingId === session.id ? (
+                            <Archive className="mr-2 h-4 w-4 animate-pulse" />
+                          ) : (
+                            <Archive className="mr-2 h-4 w-4" />
+                          )}
+                           {archivingId === session.id ? 'Archiving...' : 'Archive to Memory'}
                         </Button>
                       </CardFooter>
                     </Card>
