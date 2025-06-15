@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Settings, User, Brain, Palette, ExternalLink, Cloud, Loader2, AlertCircle, CheckCircle, Save } from 'lucide-react';
+import { Settings, User, Brain, Palette, ExternalLink, Cloud, Loader2, AlertCircle, CheckCircle, Save, Tv } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -91,12 +91,6 @@ export default function SettingsPage() {
                 <ThemeToggle />
               </div>
             </div>
-            <Button variant="outline" disabled>
-              <ExternalLink className="mr-2 h-4 w-4" /> Connect Google Account (Placeholder)
-            </Button>
-             <Button variant="outline">
-              <ExternalLink className="mr-2 h-4 w-4" /> Connect ChatGPT Account (Placeholder)
-            </Button>
           </CardContent>
         </Card>
 
@@ -162,7 +156,34 @@ export default function SettingsPage() {
         </Card>
         
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="item-1">
+          <AccordionItem value="item-integrations">
+            <AccordionTrigger className="font-headline text-lg">
+               <div className="flex items-center">
+                <ExternalLink className="mr-2 h-5 w-5 text-primary" /> Connected Services & Integrations
+               </div>
+            </AccordionTrigger>
+            <AccordionContent className="space-y-4 p-4">
+               <p className="text-sm text-muted-foreground mb-4">
+                Manage connections to external services to enhance AI capabilities. These are currently placeholders for future development.
+              </p>
+              <Button variant="outline" disabled className="w-full justify-start">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M12.545 5.516C13.37 3.435 15.32 2 17.5 2A4.5 4.5 0 0 1 22 6.5c0 2.18-1.435 4.13-3.516 4.955L12 22 5.516 11.455C3.435 10.63 2 8.68 2 6.5A4.5 4.5 0 0 1 6.5 2c2.18 0 4.13 1.435 4.955 3.516L12 12Z"/></svg>
+                Connect Google Account (Placeholder)
+              </Button>
+               <Button variant="outline" disabled className="w-full justify-start">
+                 <Cloud className="mr-2 h-4 w-4" /> Connect Google Drive (Placeholder)
+              </Button>
+               <Button variant="outline" className="w-full justify-start" disabled>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                   <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                   <polyline points="14 2 14 8 20 8" />
+                   <path d="m10.303 12.293.002-.002L9.5 15.5h1l.803-3.207-.002.002h.002A2.25 2.25 0 1 1 13.5 12h-3.195Z" />
+                 </svg>
+                Connect ChatGPT Account (Placeholder)
+              </Button>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-advanced">
             <AccordionTrigger className="font-headline text-lg">
               <div className="flex items-center">
                 <Settings className="mr-2 h-5 w-5 text-primary" /> Advanced Panel Settings (Placeholders)
@@ -174,19 +195,6 @@ export default function SettingsPage() {
               </p>
               <Button variant="outline" disabled>Panel Layout Options</Button>
               <Button variant="outline" disabled>Notification Preferences</Button>
-            </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="item-2">
-            <AccordionTrigger className="font-headline text-lg">
-               <div className="flex items-center">
-                <Cloud className="mr-2 h-5 w-5 text-primary" /> Google Drive Integration (Placeholder)
-               </div>
-            </AccordionTrigger>
-            <AccordionContent className="space-y-4 p-4">
-               <p className="text-sm text-muted-foreground">
-                Connect your Google Drive to allow the AI to access and process your documents for a more integrated experience.
-              </p>
-              <Button variant="outline" disabled>Connect to Google Drive</Button>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
