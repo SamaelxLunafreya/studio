@@ -1,6 +1,6 @@
 
-import { config } from 'dotenv';
-config();
+// Environment variables for Genkit dev server are expected to be set
+// in the environment or via Next.js's .env loading when flows are called from the app.
 
 import '@/ai/flows/collaborate-with-ai.ts';
 import '@/ai/flows/enhance-english-text.ts';
@@ -13,8 +13,7 @@ import '@/ai/flows/collaborative-workspace-flow.ts';
 import '@/ai/flows/generate-image-flow.ts';
 import '@/ai/flows/translate-text-flow.ts';
 import '@/ai/flows/get-autonomous-update-flow.ts'; 
-import '@/ai/flows/generate-casual-greeting-flow.ts'; // Register new casual greeting flow
+import '@/ai/flows/generate-casual-greeting-flow.ts';
 import '@/ai/tools/google-drive-tool.ts';
 import '@/ai/tools/github-tool.ts';
-
 
