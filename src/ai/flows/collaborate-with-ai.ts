@@ -46,13 +46,13 @@ const AiAgentPromptInputInternalSchema = z.object({
   agentId: z.number().describe('The ID of the AI core.'),
   overallInstructions: z.string().describe('Overall instructions for the collaboration from the user.'),
   agentFocus: z.string().describe("The specific thinking style or focus for this AI core."),
-  language: z.enum(['Polish', 'English']), // Still useful for conditional text construction if needed
   isPolish: z.boolean().describe("Internal flag: true if the language is Polish."),
 });
 
 // Define the prompt for a single AI core
 const aiAgentPrompt = ai.definePrompt({
   name: 'aiAgentPrompt',
+  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
   input: {schema: AiAgentPromptInputInternalSchema},
   output: z.object({
     agentId: z.number().describe('The ID of the AI core.'),
@@ -136,7 +136,6 @@ const collaborateWithAiFlow = ai.defineFlow(
           agentId,
           overallInstructions: instructions ?? defaultInstructions,
           agentFocus: agentFocusDescription,
-          language,
           isPolish: isPolishLanguage,
         });
         if (!output || typeof output.agentId !== 'number' || typeof output.idea !== 'string' || typeof output.focus !== 'string') {
@@ -156,7 +155,6 @@ const collaborateWithAiFlow = ai.defineFlow(
       topic: z.string(),
       ideas: z.array(z.object({agentId: z.number(), idea: z.string(), focus: z.string()})),
       originalUserInstructions: z.string().optional(),
-      language: z.enum(['Polish', 'English']),
       isPolish: z.boolean(),
     });
     const summaryPromptOutputSchema = z.object({
@@ -165,6 +163,7 @@ const collaborateWithAiFlow = ai.defineFlow(
 
     const summaryPrompt = ai.definePrompt({
       name: 'summaryPrompt',
+      model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
       input: { schema: summaryPromptInputInternalSchema },
       output: { schema: summaryPromptOutputSchema },
       prompt: `{{#if isPolish}}
@@ -203,7 +202,6 @@ Present this as your final response. **Your response in the "summary" field must
       topic,
       ideas: validAgentIdeas,
       originalUserInstructions: instructions,
-      language,
       isPolish: isPolishLanguage,
     });
 

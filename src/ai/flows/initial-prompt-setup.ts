@@ -37,6 +37,7 @@ export async function initialPromptSetup(input: InitialPromptSetupInput): Promis
 
 const initialPrompt = ai.definePrompt({
   name: 'initialPromptSetupPrompt',
+  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
   input: {schema: InitialPromptSetupInputSchema},
   output: {schema: InitialPromptSetupOutputSchema},
   prompt: `You are an AI assistant designed to remember user preferences and needs. A new user is setting you up for the first time. 

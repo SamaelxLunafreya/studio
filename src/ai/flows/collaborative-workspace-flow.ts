@@ -31,6 +31,7 @@ export async function collaborativeWorkspace(input: CollaborativeWorkspaceInput)
 
 const workspacePrompt = ai.definePrompt({
   name: 'collaborativeWorkspacePrompt',
+  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
   input: {schema: CollaborativeWorkspaceInputSchema},
   output: {schema: CollaborativeWorkspaceOutputSchema},
   prompt: `You are an AI assistant designed to collaborate with a user in a text/code workspace.

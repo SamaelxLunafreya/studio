@@ -35,6 +35,7 @@ export async function memoryModuleUpload(input: MemoryModuleUploadInput): Promis
 
 const memoryModuleUploadPrompt = ai.definePrompt({
   name: 'memoryModuleUploadPrompt',
+  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
   input: {schema: MemoryModuleUploadInputSchema},
   output: {schema: MemoryModuleUploadOutputSchema},
   prompt: `You are a memory module upload assistant.  You take text snippets and PDF documents, 

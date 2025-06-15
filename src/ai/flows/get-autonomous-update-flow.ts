@@ -25,12 +25,13 @@ export async function getAutonomousUpdate(input: GetAutonomousUpdateInput): Prom
   return getAutonomousUpdateFlow(input);
 }
 
-const AutonomousUpdatePromptInternalSchema = GetAutonomousUpdateInputSchema.extend({
+const AutonomousUpdatePromptInternalSchema = z.object({
     isPolish: z.boolean().describe("Internal flag: true if language is Polish.")
 });
 
 const autonomousUpdatePrompt = ai.definePrompt({
   name: 'autonomousUpdatePrompt',
+  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
   input: { schema: AutonomousUpdatePromptInternalSchema },
   output: {schema: AutonomousUpdateOutputSchema},
   prompt: `You are Lunafreya, an AI assistant. The user has enabled autonomous updates.
@@ -78,7 +79,6 @@ const getAutonomousUpdateFlow = ai.defineFlow(
 
     try {
       const {output} = await autonomousUpdatePrompt({
-          language: input.language,
           isPolish: isPolishLanguage,
       });
       if (output && typeof output.thought === 'string' && output.thought.trim() !== '') {

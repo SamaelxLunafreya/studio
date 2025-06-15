@@ -51,6 +51,7 @@ export async function suggestRelevantActions(
 
 const suggestRelevantActionsPrompt = ai.definePrompt({
   name: 'suggestRelevantActionsPrompt',
+  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
   input: {schema: SuggestRelevantActionsInputSchema},
   output: {schema: SuggestRelevantActionsOutputSchema},
   tools: [searchGoogleDriveTool, searchGitHubIssuesTool, getGitHubRepoFileContentTool], // Make tools available
