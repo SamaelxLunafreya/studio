@@ -387,8 +387,11 @@ export default function ChatPage() {
       let targetVoice: SpeechSynthesisVoice | undefined;
 
       if (currentLanguage === 'Polish') {
-        const polishFemaleNames = ['zosia', 'ewa', 'agata', 'paulina', 'anna', 'magda', 'hanna'];
-        targetVoice =
+        const microsoftPaulina = voices.find(voice => voice.lang.startsWith('pl') && voice.name.toLowerCase().includes('microsoft paulina online'));
+        const anyPaulina = voices.find(voice => voice.lang.startsWith('pl') && voice.name.toLowerCase().includes('paulina'));
+        const polishFemaleNames = ['paulina', 'zosia', 'ewa', 'agata', 'anna', 'magda', 'hanna']; // Paulina is already prioritized
+        
+        targetVoice = microsoftPaulina || anyPaulina ||
           voices.find(voice => voice.lang.startsWith('pl') && polishFemaleNames.some(name => voice.name.toLowerCase().includes(name))) ||
           voices.find(voice => voice.lang.startsWith('pl') && (voice.name.toLowerCase().includes('kobieta') || voice.name.toLowerCase().includes('female')));
       } else { // English
@@ -402,10 +405,8 @@ export default function ChatPage() {
       if (targetVoice) {
         utterance.voice = targetVoice;
       } else {
-        // Fallback to the first available voice for the specific language variant (e.g., pl-PL or en-US)
         let fallbackVoice = voices.find(voice => voice.lang === utterance.lang);
         if (!fallbackVoice) {
-          // If no voice for the specific variant, try the broader language (e.g., 'pl' or 'en')
           fallbackVoice = voices.find(voice => voice.lang.startsWith(utterance.lang.substring(0, 2)));
         }
         if (fallbackVoice) {
@@ -421,7 +422,6 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      // Ensure voices are loaded, especially on some browsers
       if (speechSynthesis.getVoices().length === 0) {
         speechSynthesis.onvoiceschanged = () => { /* Voices loaded */ };
       }
