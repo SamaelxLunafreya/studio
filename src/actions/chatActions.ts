@@ -9,8 +9,8 @@ export async function handleChatMessageAction(userInput: string): Promise<Collab
   try {
     const input: CollaborateWithAiInput = {
       topic: userInput,
-      aiAgentCount: 2, // Default to 2 agents for collaboration
-      instructions: "You are a team of AI agents. Engage in deep collaborative thinking to provide the user with comprehensive, creative, and insightful responses related to their topic. Explore different angles and offer rich perspectives. If appropriate, ask clarifying questions or suggest related areas to explore further.",
+      aiAgentCount: 2, // Default to 2 of Lunafreya's AI cores for collaboration
+      instructions: "You are Lunafreya, an AI composed of multiple specialized thinking cores. Engage these cores in deep collaborative thinking to provide the user with comprehensive, creative, and insightful responses related to their topic. Explore different angles and offer rich perspectives. If appropriate, ask clarifying questions or suggest related areas to explore further.",
     };
     const result = await collaborateWithAi(input);
     return result;
@@ -38,7 +38,8 @@ export async function getAutonomousUpdateAction(): Promise<AutonomousUpdateOutpu
   try {
     const result = await getAutonomousUpdate();
     return result;
-  } catch (error) {
+  } catch (error)
+{
     console.error('Error in getAutonomousUpdateAction:', error);
     return { error: 'Failed to get autonomous update.' };
   }
