@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Settings, User, Brain, Palette, ExternalLink, Cloud, Loader2, AlertCircle, CheckCircle, Save, Tv, Github } from 'lucide-react';
+import { Settings, User, Brain, Palette, ExternalLink, Cloud, Loader2, AlertCircle, CheckCircle, Save, Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -12,14 +12,13 @@ import { useToast } from '@/hooks/use-toast';
 import { savePersonalitySettingsAction } from '@/actions/settingsActions';
 import type { InitialPromptSetupInput } from '@/ai/flows/initial-prompt-setup';
 import { PageHeader } from '@/components/page-header';
-import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/theme-toggle';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"
+} from "@/components/ui/accordion";
 
 
 export default function SettingsPage() {
@@ -70,7 +69,8 @@ export default function SettingsPage() {
   const handlePlaceholderClick = (featureName: string) => {
     toast({
       title: "Feature Not Implemented",
-      description: `${featureName} integration is coming soon!`,
+      description: `${featureName} integration is a placeholder for future development.`,
+      duration: 3000,
     });
   };
 
@@ -176,13 +176,13 @@ export default function SettingsPage() {
               </p>
               <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick('Google Account')}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M12.545 5.516C13.37 3.435 15.32 2 17.5 2A4.5 4.5 0 0 1 22 6.5c0 2.18-1.435 4.13-3.516 4.955L12 22 5.516 11.455C3.435 10.63 2 8.68 2 6.5A4.5 4.5 0 0 1 6.5 2c2.18 0 4.13 1.435 4.955 3.516L12 12Z"/></svg>
-                Connect Google Account (Placeholder)
+                Connect Google Account
               </Button>
                <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick('Google Drive')}>
-                 <Cloud className="mr-2 h-4 w-4" /> Connect Google Drive (Placeholder)
+                 <Cloud className="mr-2 h-4 w-4" /> Connect Google Drive
               </Button>
                <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick('GitHub Account')}>
-                 <Github className="mr-2 h-4 w-4" /> Connect GitHub Account (Placeholder)
+                 <Github className="mr-2 h-4 w-4" /> Connect GitHub Account
               </Button>
                <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick('OpenAI/ChatGPT Account')}>
                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
@@ -190,22 +190,22 @@ export default function SettingsPage() {
                    <polyline points="14 2 14 8 20 8" />
                    <path d="m10.303 12.293.002-.002L9.5 15.5h1l.803-3.207-.002.002h.002A2.25 2.25 0 1 1 13.5 12h-3.195Z" />
                  </svg>
-                Connect OpenAI/ChatGPT Account (Placeholder)
+                Connect OpenAI/ChatGPT Account
               </Button>
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="item-advanced">
             <AccordionTrigger className="font-headline text-lg">
               <div className="flex items-center">
-                <Settings className="mr-2 h-5 w-5 text-primary" /> Advanced Panel Settings (Placeholders)
+                <Settings className="mr-2 h-5 w-5 text-primary" /> Advanced Panel Settings
               </div>
             </AccordionTrigger>
             <AccordionContent className="space-y-4 p-4">
               <p className="text-sm text-muted-foreground">
                 Future settings for panel customization, notifications, and other advanced application behaviors will appear here.
               </p>
-              <Button variant="outline" onClick={() => handlePlaceholderClick('Panel Layout Options')}>Panel Layout Options</Button>
-              <Button variant="outline" onClick={() => handlePlaceholderClick('Notification Preferences')}>Notification Preferences</Button>
+              <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick('Panel Layout Options')}>Panel Layout Options</Button>
+              <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick('Notification Preferences')}>Notification Preferences</Button>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
