@@ -7,8 +7,8 @@ import {
   Code,
   Search,
   SettingsIcon,
-  Lightbulb,
-  LayoutDashboard,
+  LayoutDashboard, // Replaced Lightbulb
+  History, // Added for Chat History
   Moon,
   Sun,
   Github,
@@ -36,16 +36,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { ThemeProvider } from '@/components/theme-provider'; // To be created
+import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
   title: 'Lunafreya Google Cloud AI',
   description: 'Collaborative AI for deep thinking and creative reasoning.',
-  icons: [], // Explicitly set to empty array
+  icons: [],
 };
 
 const navItems = [
   { href: '/chat', icon: MessageCircle, label: 'AI Chat', badge: 'Beta' },
+  { href: '/chat-history', icon: History, label: 'Chat History' },
   { href: '/memory-upload', icon: UploadCloud, label: 'Memory Upload' },
   { href: '/text-enhancer', icon: Edit3, label: 'Text Enhancer' },
   { href: '/code-generator', icon: Code, label: 'Code Generator' },
