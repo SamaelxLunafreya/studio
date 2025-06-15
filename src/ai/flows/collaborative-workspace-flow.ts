@@ -29,10 +29,21 @@ export async function collaborativeWorkspace(input: CollaborativeWorkspaceInput)
   return collaborativeWorkspaceFlow(input);
 }
 
+// Internal schema for the prompt, including boolean flags for modes
+const WorkspacePromptInternalInputSchema = z.object({
+  text: z.string(),
+  selection: z.string().optional(),
+  mode: z.enum(["BRAINSTORM", "CONTINUE", "SUGGEST_EDITS", "EXPLAIN"]), // Keep original mode for context if needed
+  isBrainstormMode: z.boolean(),
+  isContinueMode: z.boolean(),
+  isSuggestEditsMode: z.boolean(),
+  isExplainMode: z.boolean(),
+});
+
 const workspacePrompt = ai.definePrompt({
   name: 'collaborativeWorkspacePrompt',
-  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
-  input: {schema: CollaborativeWorkspaceInputSchema},
+  model: 'googleai/gemini-1.5-flash-latest',
+  input: {schema: WorkspacePromptInternalInputSchema}, // Use internal schema
   output: {schema: CollaborativeWorkspaceOutputSchema},
   prompt: `You are an AI assistant designed to collaborate with a user in a text/code workspace.
 The user has provided the following text:
@@ -49,17 +60,17 @@ The user has also selected the following portion of the text:
 
 The user wants you to operate in "{{mode}}" mode.
 
-{{#if (eq mode "BRAINSTORM")}}
+{{#if isBrainstormMode}}
 Based on the <UserText> (if any, otherwise general brainstorming), generate a list of relevant ideas, concepts, or next steps.
 Provide the brainstormed ideas in the 'resultText' field.
-{{else if (eq mode "CONTINUE")}}
+{{else if isContinueMode}}
 Continue writing or coding based on the <UserText>. Try to maintain the style and context.
 Provide the continued text in the 'resultText' field.
-{{else if (eq mode "SUGGEST_EDITS")}}
+{{else if isSuggestEditsMode}}
 Review the <UserText> and suggest improvements, corrections, or alternative phrasings/code structures.
 Provide the suggested edited version or a list of suggestions in the 'resultText' field.
 You can provide a brief explanation for your major suggestions in the 'explanation' field.
-{{else if (eq mode "EXPLAIN")}}
+{{else if isExplainMode}}
 Explain the provided <UserText>. {{#if selection}}Focus particularly on the <UserSelection>{{else}}Focus on the overall content{{/if}}.
 Provide the explanation in the 'explanation' field. You can optionally provide a summarized version or key takeaways in 'resultText'.
 {{/if}}
@@ -76,14 +87,23 @@ const collaborativeWorkspaceFlow = ai.defineFlow(
     outputSchema: CollaborativeWorkspaceOutputSchema,
   },
   async (input: CollaborativeWorkspaceInput) => {
-    const {output} = await workspacePrompt(input);
+    const internalPromptInput = {
+      text: input.text,
+      selection: input.selection,
+      mode: input.mode,
+      isBrainstormMode: input.mode === "BRAINSTORM",
+      isContinueMode: input.mode === "CONTINUE",
+      isSuggestEditsMode: input.mode === "SUGGEST_EDITS",
+      isExplainMode: input.mode === "EXPLAIN",
+    };
+
+    const {output} = await workspacePrompt(internalPromptInput);
+    
     if (!output) {
-        // Fallback if the model doesn't strictly adhere or if there's an issue
-        return { 
-            explanation: "The AI could not process the request in the specified mode. Please try rephrasing or a different mode." 
+        return {
+            explanation: "The AI could not process the request in the specified mode. Please try rephrasing or a different mode."
         };
     }
-    // Ensure at least one field has content
     if (!output.resultText && !output.explanation) {
         if (input.mode === "EXPLAIN") {
             output.explanation = "No explanation generated. The content might be too short or ambiguous.";
@@ -94,3 +114,4 @@ const collaborativeWorkspaceFlow = ai.defineFlow(
     return output;
   }
 );
+
