@@ -1,3 +1,4 @@
+
 // This file is machine-generated - edit at your own risk.
 
 'use server';
@@ -77,24 +78,40 @@ const suggestRelevantActionsFlow = ai.defineFlow(
     inputSchema: SuggestRelevantActionsInputSchema,
     outputSchema: SuggestRelevantActionsOutputSchema,
   },
-  async input => {
-    const {output, history} = await suggestRelevantActionsPrompt(input);
+  async (input): Promise<SuggestRelevantActionsOutput> => {
+    let LlmOutput: (typeof SuggestRelevantActionsOutputSchema._type & z.ZodObject<any, any, any>['_output']) | null = null;
+    
+    try {
+      const { output: promptOutput, history } = await suggestRelevantActionsPrompt(input);
+      LlmOutput = promptOutput; // promptOutput can be null
 
-    if (history && history.length > 0) {
-      const lastStep = history[history.length - 1];
-      if (lastStep.output?.toolRequest) {
-        // If the LLM requested a tool, we'd handle it here.
-        // For suggestRelevantActions, the LLM itself should provide the suggestions directly based on tool *awareness*.
-        // This part might be more relevant if the flow was directly *executing* the tool and then generating further response.
-        // For now, we assume the LLM generates suggestions that *could* lead to tool use.
-        console.log("LLM suggested tool use in suggestRelevantActionsPrompt, but the flow currently expects direct suggestions.", lastStep.output.toolRequest);
+      if (history && history.length > 0) {
+        const lastStep = history[history.length - 1];
+        if (lastStep.output?.toolRequest) {
+          console.log(
+            "LLM suggested tool use in suggestRelevantActionsPrompt. Current flow expects direct suggestions. Tool request:",
+            lastStep.output.toolRequest
+          );
+        }
       }
+    } catch (error) {
+      console.error('Error during suggestRelevantActionsPrompt execution or parsing:', error);
+      // LlmOutput remains null, proceed to fallback.
+    }
+
+    if (LlmOutput?.suggestedActions && Array.isArray(LlmOutput.suggestedActions) && LlmOutput.suggestedActions.length > 0) {
+      return { suggestedActions: LlmOutput.suggestedActions.slice(0, 4) };
     }
     
-    if (output?.suggestedActions) {
-        return { suggestedActions: output.suggestedActions.slice(0, 4) }; // Limit to 4 suggestions
-    }
-    // Fallback if the model doesn't return the expected structure or no suggestions
-    return { suggestedActions: ["Explore related topics", "Ask a clarifying question"] };
+    console.warn(
+      "SuggestRelevantActionsFlow: LLM did not return valid suggestions, output was null, or an error occurred. Using fallback suggestions."
+    );
+    return { 
+      suggestedActions: [
+        "Explore related topics", 
+        "Ask a clarifying question", 
+        "Summarize our discussion"
+      ].slice(0,3) // Ensure fallback also respects a reasonable limit
+    };
   }
 );
