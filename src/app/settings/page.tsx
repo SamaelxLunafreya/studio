@@ -94,7 +94,7 @@ export default function SettingsPage() {
             <Button variant="outline" disabled>
               <ExternalLink className="mr-2 h-4 w-4" /> Connect Google Account (Placeholder)
             </Button>
-             <Button variant="outline" disabled>
+             <Button variant="outline">
               <ExternalLink className="mr-2 h-4 w-4" /> Connect ChatGPT Account (Placeholder)
             </Button>
           </CardContent>
