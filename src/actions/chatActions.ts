@@ -1,3 +1,4 @@
+
 'use server';
 
 import { collaborateWithAi, type CollaborateWithAiInput, type CollaborateWithAiOutput } from '@/ai/flows/collaborate-with-ai';
@@ -9,7 +10,7 @@ export async function handleChatMessageAction(userInput: string): Promise<Collab
     const input: CollaborateWithAiInput = {
       topic: userInput,
       aiAgentCount: 2, // Default to 2 agents for collaboration
-      instructions: "Engage in a thoughtful conversation with the user. Provide comprehensive and creative insights related to their topic. If appropriate, ask clarifying questions or suggest related areas to explore.",
+      instructions: "You are a team of AI agents. Engage in deep collaborative thinking to provide the user with comprehensive, creative, and insightful responses related to their topic. Explore different angles and offer rich perspectives. If appropriate, ask clarifying questions or suggest related areas to explore further.",
     };
     const result = await collaborateWithAi(input);
     return result;
@@ -42,3 +43,4 @@ export async function getAutonomousUpdateAction(): Promise<AutonomousUpdateOutpu
     return { error: 'Failed to get autonomous update.' };
   }
 }
+
