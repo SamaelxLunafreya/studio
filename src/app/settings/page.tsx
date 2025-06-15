@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState } from 'react';
-import { Settings, User, Brain, Palette, ExternalLink, Cloud, Loader2, AlertCircle, CheckCircle, Save, Tv } from 'lucide-react';
+import { Settings, User, Brain, Palette, ExternalLink, Cloud, Loader2, AlertCircle, CheckCircle, Save, Tv, Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -173,13 +174,16 @@ export default function SettingsPage() {
                <Button variant="outline" disabled className="w-full justify-start">
                  <Cloud className="mr-2 h-4 w-4" /> Connect Google Drive (Placeholder)
               </Button>
+               <Button variant="outline" disabled className="w-full justify-start">
+                 <Github className="mr-2 h-4 w-4" /> Connect GitHub Account (Placeholder)
+              </Button>
                <Button variant="outline" className="w-full justify-start" disabled>
                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
                    <polyline points="14 2 14 8 20 8" />
                    <path d="m10.303 12.293.002-.002L9.5 15.5h1l.803-3.207-.002.002h.002A2.25 2.25 0 1 1 13.5 12h-3.195Z" />
                  </svg>
-                Connect ChatGPT Account (Placeholder)
+                Connect OpenAI/ChatGPT Account (Placeholder)
               </Button>
             </AccordionContent>
           </AccordionItem>

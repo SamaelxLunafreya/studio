@@ -1,3 +1,4 @@
+
 import { config } from 'dotenv';
 config();
 
@@ -13,3 +14,5 @@ import '@/ai/flows/generate-image-flow.ts';
 import '@/ai/flows/translate-text-flow.ts';
 import '@/ai/flows/get-autonomous-update-flow.ts'; // Register new autonomous update flow
 import '@/ai/tools/google-drive-tool.ts';
+import '@/ai/tools/github-tool.ts'; // Register new GitHub tool
+

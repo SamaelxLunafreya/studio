@@ -17,7 +17,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { searchGoogleDriveTool } from '@/ai/tools/google-drive-tool'; // Import the new tool
+import { searchGoogleDriveTool } from '@/ai/tools/google-drive-tool';
+import { searchGitHubIssuesTool, getGitHubRepoFileContentTool } from '@/ai/tools/github-tool'; // Import GitHub tools
 
 const SuggestRelevantActionsInputSchema = z.object({
   conversationContext: z
@@ -52,7 +53,7 @@ const suggestRelevantActionsPrompt = ai.definePrompt({
   name: 'suggestRelevantActionsPrompt',
   input: {schema: SuggestRelevantActionsInputSchema},
   output: {schema: SuggestRelevantActionsOutputSchema},
-  tools: [searchGoogleDriveTool], // Make the tool available to the prompt
+  tools: [searchGoogleDriveTool, searchGitHubIssuesTool, getGitHubRepoFileContentTool], // Make tools available
   system: `Based on the current conversation context: {{{conversationContext}}} and the user's goals: {{{userGoals}}}, suggest a list of 3-4 relevant actions the user can take.
   Return the actions as a list of strings in the 'suggestedActions' field. Each string should be a concise, actionable phrase.
 
@@ -66,6 +67,11 @@ const suggestRelevantActionsPrompt = ai.definePrompt({
 
   If the conversation or goals mention needing information that might be in user's documents, you can suggest using the 'searchGoogleDriveTool'.
   For example: "Search Google Drive for [relevant document name or topic]"
+
+  If the conversation involves code, repositories, or software development issues, you can suggest using GitHub tools.
+  For example:
+  - "Search GitHub issues in [owner/repo] for [topic]"
+  - "Get content of [filepath] from GitHub repo [owner/repo]"
 
   Be specific and provide actions directly applicable to the context and goals. Avoid generic suggestions.
   Ensure the output is a JSON object with the 'suggestedActions' array.
@@ -92,6 +98,9 @@ const suggestRelevantActionsFlow = ai.defineFlow(
             "LLM suggested tool use in suggestRelevantActionsPrompt. Current flow expects direct suggestions. Tool request:",
             lastStep.output.toolRequest
           );
+          // If the LLM wants to use a tool, we currently don't handle that response for *direct suggestions*.
+          // The prompt is primarily for generating textual suggestions.
+          // For a more agentic behavior, this flow would need to handle tool calls and responses.
         }
       }
     } catch (error) {
