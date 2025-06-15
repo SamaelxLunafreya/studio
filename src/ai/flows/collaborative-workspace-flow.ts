@@ -78,6 +78,14 @@ Provide the explanation in the 'explanation' field. You can optionally provide a
 Respond with a JSON object adhering to the output schema.
 Ensure 'resultText' or 'explanation' (or both) are populated as appropriate for the mode.
 `,
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }, // Could be BLOCK_ONLY_HIGH if code is involved
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+    ],
+  },
 });
 
 const collaborativeWorkspaceFlow = ai.defineFlow(

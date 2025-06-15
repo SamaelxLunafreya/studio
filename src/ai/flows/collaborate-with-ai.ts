@@ -93,6 +93,14 @@ Return a JSON object containing "agentId" (which is {{agentId}}), your "focus" (
 Ensure your "idea" is unique, insightful, and directly contributes to a multifaceted understanding of the topic. **Your response in the "idea" field must be in English.**
 {{/if}}
 `,
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+    ],
+  },
 });
 
 // Define the array of possible focuses for the AI cores (kept in English for internal logic simplicity)
@@ -196,6 +204,14 @@ The summary should be comprehensive, address the user's topic and original instr
 Present this as your final response. **Your response in the "summary" field must be in English.**
 {{/if}}
       `,
+      config: {
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+        ],
+      },
     });
 
     const {output: summaryOutput} = await summaryPrompt({
