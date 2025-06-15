@@ -95,13 +95,22 @@ export default function ChatPage() {
     if (isAutonomousModeEnabled) {
       autonomousIntervalRef.current = setInterval(async () => {
         const result = await getAutonomousUpdateAction(currentLanguage);
-        if ('error' in result) {
-          console.error("Autonomous update error:", result.error);
+        if ('error' in result) { // Should ideally not happen if action handles errors by returning reflection
+          console.error("Autonomous update error from action:", result.error);
+           const autonomousMessage: Message = {
+            id: Date.now().toString() + '-autonomous-error',
+            role: 'ai',
+            text: `${currentLanguage === 'Polish' ? 'Błąd Wewnętrznego Monologu Lunafreyi' : "Lunafreya's Inner Monologue Error"}: ${result.error}`,
+            timestamp: new Date(),
+            isAutonomous: true,
+            isError: true,
+          };
+          setMessages(prev => [...prev, autonomousMessage]);
         } else {
           const autonomousMessage: Message = {
             id: Date.now().toString() + '-autonomous',
             role: 'ai',
-            text: `${currentLanguage === 'Polish' ? 'Myśl Lunafreyi' : "Lunafreya's thought"}: ${result.thought}`,
+            text: `${currentLanguage === 'Polish' ? 'Wewnętrzny Monolog Lunafreyi' : "Lunafreya's Inner Monologue"}: ${result.reflection}`,
             timestamp: new Date(),
             isAutonomous: true,
           };
@@ -130,8 +139,8 @@ export default function ChatPage() {
           ? `Tryb Autonomiczny ${enabled ? 'Włączony' : 'Wyłączony'}`
           : `Autonomous Mode ${enabled ? 'Enabled' : 'Disabled'}`,
         description: currentLanguage === 'Polish'
-          ? (enabled ? "Lunafreya będzie teraz oferować proaktywne myśli." : "Autonomiczne aktualizacje są wyłączone.")
-          : (enabled ? "Lunafreya will now offer proactive thoughts." : "Autonomous updates are disabled."),
+          ? (enabled ? "Lunafreya będzie teraz dzielić się swoimi refleksjami." : "Autonomiczne refleksje są wyłączone.")
+          : (enabled ? "Lunafreya will now share her reflections." : "Autonomous reflections are disabled."),
       });
     }
   };

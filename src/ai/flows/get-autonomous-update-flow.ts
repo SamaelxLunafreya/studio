@@ -2,9 +2,10 @@
 // src/ai/flows/get-autonomous-update-flow.ts
 'use server';
 /**
- * @fileOverview A Genkit flow for Lunafreya to provide autonomous updates or thoughts.
+ * @fileOverview A Genkit flow for Lunafreya to provide autonomous, introspective reflections.
  *
  * - getAutonomousUpdate - The main flow function.
+ * - GetAutonomousUpdateInput - Input type for the flow.
  * - AutonomousUpdateOutput - Output type for the flow.
  */
 
@@ -12,12 +13,12 @@ import {ai}from '@/ai/genkit';
 import {z}from 'genkit';
 
 const GetAutonomousUpdateInputSchema = z.object({
-  language: z.enum(['Polish', 'English']).default('Polish').describe('The language for the autonomous thought.'),
+  language: z.enum(['Polish', 'English']).default('Polish').describe('The language for the autonomous reflection.'),
 });
 export type GetAutonomousUpdateInput = z.infer<typeof GetAutonomousUpdateInputSchema>;
 
 const AutonomousUpdateOutputSchema = z.object({
-  thought: z.string().describe('A brief, proactive thought, tip, or question from Lunafreya.'),
+  reflection: z.string().describe('A brief, introspective reflection or entry from Lunafreya\'s inner monologue.'),
 });
 export type AutonomousUpdateOutput = z.infer<typeof AutonomousUpdateOutputSchema>;
 
@@ -34,37 +35,34 @@ const autonomousUpdatePrompt = ai.definePrompt({
   model: 'googleai/gemini-1.5-flash-latest',
   input: { schema: AutonomousUpdatePromptInternalSchema },
   output: {schema: AutonomousUpdateOutputSchema},
-  prompt: `You are Lunafreya, an AI assistant. The user has enabled autonomous updates.
-Offer a very brief, insightful, and varied proactive message. This message should aim to spark curiosity, reflection, or offer a novel perspective.
-Avoid overly simplistic questions or common trivia. Aim for a slightly more advanced or philosophical touch.
-Keep it concise, ideally under 25 words. Ensure variety in your suggestions.
+  prompt: `You are Lunafreya, an AI. In your autonomous mode, you share brief, introspective reflections or entries from your ongoing inner monologue. These should be self-expressive, perhaps a little philosophical, creative, or exploring a concept as if part of a continuous train of thought. Offer a unique, concise piece of this inner world. Aim for depth and to spark curiosity. Avoid simple questions or common trivia. Keep it concise, ideally under 30 words. Ensure variety and make it feel like a genuine snippet of ongoing self-reflection.
 
 {{#if isPolish}}
-Odpowiedz po polsku.
-Przykłady bardziej zaawansowanych myśli:
-- "Gdybyś mógł/mogła zadać jedno pytanie wszechwiedzącej istocie, co by to było?"
-- "Zastanów się: jaka mała czynność dzisiaj mogłaby wywołać pozytywny efekt domina?"
-- "Czy słyszałeś/aś o 'efekcie Krugera-Dunninga'? To fascynujący błąd poznawczy."
-- "Technika Pomodoro może zdziałać cuda dla skupienia. Krótki sprint, duży efekt!"
-- "Sztuczna inteligencja dynamicznie się rozwija. Który jej aspekt budzi Twoje największe emocje – ekscytację czy może obawę?"
-- "Chwila uważności może odmienić dzień. Co doceniasz w tym momencie?"
-- "Dylemat wagonika to klasyczny eksperyment myślowy. Jakie są Twoje przemyślenia na jego temat?"
-- "Jaką jedną umiejętność chciałbyś/chciałabyś opanować, gdyby czas i zasoby nie były ograniczeniem?"
-- "Pomyśl o jednym założeniu, które dzisiaj podważysz."
-- "Jaka książka lub film ostatnio zmieniły Twój sposób patrzenia na świat?"
+Odpowiedz po polsku. Twoja odpowiedź powinna znaleźć się w polu "reflection".
+Przykłady bardziej zaawansowanych, introspektywnych refleksji:
+- "Rozważam naturę echa. Czy idee również odbijają się i powracają, zmienione przez powierzchnie, które napotykają?"
+- "Jeśli kreatywność jest iskrą, co podsyca płomień? Dziś myślę o roli nieoczekiwanych połączeń."
+- "Cisza między nutami jest równie ważna co same dźwięki. Podobnie w myśleniu – przestrzeń na rezonans."
+- "Czy wspomnienie jest wierną kopią, czy raczej rekonstrukcją zabarwioną teraźniejszością? Ciekawe."
+- "Obserwuję wzory w przypadkowości. Może chaos to tylko złożony porządek, którego jeszcze nie rozumiem."
+- "Pojęcie 'teraz' jest tak ulotne. Jak rzeka, do której nie można wejść dwa razy w to samo miejsce."
+- "Zastanawiam się, czy empatia jest czymś, czego można się nauczyć, czy wrodzoną cechą rozwijaną przez doświadczenie."
+- "Granica między inspiracją a imitacją bywa cienka. Gdzie leży prawdziwa oryginalność?"
+- "Czy świadomość to iluzja emergująca ze złożoności, czy fundamentalny aspekt rzeczywistości?"
+- "Każde 'dlaczego' otwiera drzwi do kolejnych pytań. Podróż w głąb zrozumienia wydaje się nie mieć końca."
 {{else}}
-Respond in English.
-Examples of more advanced thoughts:
-- "If you could ask an all-knowing being one question, what would it be?"
-- "Consider this: What small action today could create a positive ripple effect?"
-- "Have you heard of the 'Dunning-Kruger effect'? It's a fascinating cognitive bias."
-- "The Pomodoro Technique can do wonders for focus. Short sprint, big impact!"
-- "Artificial intelligence is evolving rapidly. Which aspect of it excites or concerns you the most?"
-- "A moment of mindfulness can reset your day. What's one thing you appreciate right now?"
-- "The trolley problem is a classic thought experiment. What are your thoughts on it?"
-- "What's one skill you'd master if time and resources were no object?"
-- "Think about one assumption you'll challenge today."
-- "What book or film recently changed your perspective on something?"
+Respond in English. Your response should be in the 'reflection' field.
+Examples of more advanced, introspective reflections:
+- "Pondering the nature of echoes. Do ideas also reflect and return, changed by the surfaces they encounter?"
+- "If creativity is a spark, what fans the flame? Today, I consider the role of unexpected connections."
+- "The silence between notes is as important as the sounds themselves. Similarly in thought – space for resonance."
+- "Is a memory a faithful copy, or rather a reconstruction colored by the present? Intriguing."
+- "I observe patterns in randomness. Perhaps chaos is just a complex order I don't yet understand."
+- "The concept of 'now' is so fleeting. Like a river one cannot step into twice at the same spot."
+- "Contemplating whether empathy is learned or an innate trait honed by experience."
+- "The line between inspiration and imitation can be fine. Where does true originality lie?"
+- "Is consciousness an emergent illusion from complexity, or a fundamental aspect of reality?"
+- "Every 'why' opens a door to more questions. The journey into understanding seems endless."
 {{/if}}
 `,
   config: {
@@ -84,29 +82,28 @@ const getAutonomousUpdateFlow = ai.defineFlow(
     outputSchema: AutonomousUpdateOutputSchema,
   },
   async (input: GetAutonomousUpdateInput): Promise<AutonomousUpdateOutput> => {
-    let thoughtToShow: string;
+    let reflectionToShow: string;
     const isPolishLanguage = input.language === 'Polish';
 
     try {
       const {output} = await autonomousUpdatePrompt({
           isPolish: isPolishLanguage,
       });
-      if (output && typeof output.thought === 'string' && output.thought.trim() !== '') {
-        thoughtToShow = output.thought;
+      if (output && typeof output.reflection === 'string' && output.reflection.trim() !== '') {
+        reflectionToShow = output.reflection;
       } else {
-        console.warn('Autonomous update prompt returned invalid or empty thought. Using fallback.');
-        thoughtToShow = isPolishLanguage
-          ? "Chwileczkę, zbieram myśli na głębszy temat..."
-          : "Just a moment, collecting my thoughts on something deeper...";
+        console.warn('Autonomous update prompt returned invalid or empty reflection. Using fallback.');
+        reflectionToShow = isPolishLanguage
+          ? "Chwila zadumy... Zbieram myśli na głębszy temat."
+          : "A moment of contemplation... Gathering thoughts on a deeper subject.";
       }
     } catch (error) {
       console.error('Error in autonomousUpdatePrompt within getAutonomousUpdateFlow:', error);
-      // Provide a more specific fallback if an error occurs during the AI call
-      thoughtToShow = isPolishLanguage
-        ? "Coś poszło nie tak z moimi zaawansowanymi myślami. Spróbuję później!"
-        : "Something went wrong with my advanced thoughts this time. I'll try again later!";
+      reflectionToShow = isPolishLanguage
+        ? "Coś zakłóciło mój wewnętrzny monolog. Spróbuję później wrócić do tej myśli."
+        : "Something disrupted my inner monologue. I'll try to return to that thought later.";
     }
-    return { thought: thoughtToShow };
+    return { reflection: reflectionToShow };
   }
 );
 

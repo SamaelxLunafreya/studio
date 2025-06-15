@@ -2,7 +2,6 @@
 'use server';
 
 import { collaborateWithAi, type CollaborateWithAiInput, type CollaborateWithAiOutput } from '@/ai/flows/collaborate-with-ai';
-import { suggestRelevantActions, type SuggestRelevantActionsInput, type SuggestRelevantActionsOutput } from '@/ai/flows/suggest-relevant-actions';
 import { getAutonomousUpdate, type GetAutonomousUpdateInput, type AutonomousUpdateOutput } from '@/ai/flows/get-autonomous-update-flow';
 import { generateCasualGreeting, type GenerateCasualGreetingInput, type GenerateCasualGreetingOutput } from '@/ai/flows/generate-casual-greeting-flow';
 
@@ -41,33 +40,22 @@ export async function handleChatMessageAction(userInput: string, language: 'Poli
   }
 }
 
-export async function getIntelligentSuggestionsAction(conversationContext: string, userGoals: string): Promise<SuggestRelevantActionsOutput | { error: string }> {
-  try {
-    const input: SuggestRelevantActionsInput = {
-      conversationContext,
-      userGoals,
-    };
-    // The 'suggestRelevantActions' flow is designed to handle its own errors and return SuggestRelevantActionsOutput
-    const result: SuggestRelevantActionsOutput = await suggestRelevantActions(input);
-    return result;
-  } catch (error: any) {
-    // This catch block is a fallback for truly unexpected errors from the flow itself.
-    console.error('Critical error in getIntelligentSuggestionsAction or underlying suggestRelevantActions flow:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error while fetching suggestions.';
-    return { error: `Failed to get suggestions: ${errorMessage}` };
-  }
-}
 
 export async function getAutonomousUpdateAction(language: 'Polish' | 'English'): Promise<AutonomousUpdateOutput | { error: string }> {
   try {
     const input: GetAutonomousUpdateInput = { language };
-    // The 'getAutonomousUpdate' flow is designed to handle its own errors and return AutonomousUpdateOutput
     const result: AutonomousUpdateOutput = await getAutonomousUpdate(input);
-    return result;
+    return result; // The flow itself now handles its internal errors and returns the AutonomousUpdateOutput schema
   } catch (error: any) {
-    // This catch block is a fallback for truly unexpected errors from the flow itself.
     console.error('Critical error in getAutonomousUpdateAction or underlying getAutonomousUpdate flow:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error during autonomous update.';
-    return { error: `Failed to get autonomous update: ${errorMessage}` };
+    // Even if the flow is supposed to handle errors, this catch is a safety net for unexpected issues
+    // in the action itself or if the flow throws an unhandled exception.
+    // We need to ensure this action *always* returns something conforming to the expected Promise type.
+    const fallbackReflection = language === 'Polish' 
+        ? "Coś zakłóciło mój wewnętrzny monolog. Spróbuję później wrócić do tej myśli." 
+        : "Something disrupted my inner monologue. I'll try to return to that thought later.";
+    return { reflection: fallbackReflection };
   }
 }
+
