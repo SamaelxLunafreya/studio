@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview A Genkit flow for generating images based on text prompts.
+ * @fileOverview A Genkit flow for generating images based on text prompts using Google AI (Gemini).
  *
  * - generateImage - The main flow function.
  * - GenerateImageInput - Input type for the flow.
@@ -35,28 +35,32 @@ const generateImageFlow = ai.defineFlow(
   async (input: GenerateImageInput) => {
     try {
       const { media, text } = await ai.generate({
-        model: 'googleai/gemini-2.0-flash-exp', // IMPORTANT: Use the specified model for image generation
+        model: 'googleai/gemini-1.5-flash-latest', // Using Gemini for image generation
         prompt: input.prompt,
         config: {
-          responseModalities: ['TEXT', 'IMAGE'], // MUST provide both TEXT and IMAGE
-           safetySettings: [ // Relax safety settings for broader image generation
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
-          ],
+          responseModalities: ['TEXT', 'IMAGE'], // Required for Gemini image generation
         },
       });
 
       if (media?.url) {
-        return { imageDataUri: media.url, feedbackText: text };
+        return { imageDataUri: media.url, feedbackText: text || 'Image generated successfully.' };
       } else {
         return { feedbackText: text || "Image generation did not produce an image." };
       }
     } catch (error: any) {
-      console.error('Error in generateImageFlow:', error);
+      console.error('Error in generateImageFlow (Google AI):', error);
+      let errorMessage = 'Unknown error during image generation.';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      // Check for specific Google AI error details if available
+      if (error.error?.message) {
+         errorMessage = error.error.message;
+      } else if (error.details) { // Google AI often returns errors in `details`
+        errorMessage = error.details;
+      }
       return {
-        feedbackText: `Image generation failed: ${error.message || 'Unknown error'}`,
+        feedbackText: `Image generation failed: ${errorMessage}`,
       };
     }
   }

@@ -8,8 +8,8 @@
  * - AutonomousUpdateOutput - Output type for the flow.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {ai}from '@/ai/genkit';
+import {z}from 'genkit';
 
 const GetAutonomousUpdateInputSchema = z.object({
   language: z.enum(['Polish', 'English']).default('Polish').describe('The language for the autonomous thought.'),
@@ -31,7 +31,7 @@ const AutonomousUpdatePromptInternalSchema = z.object({
 
 const autonomousUpdatePrompt = ai.definePrompt({
   name: 'autonomousUpdatePrompt',
-  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
+  model: 'googleai/gemini-1.5-flash-latest',
   input: { schema: AutonomousUpdatePromptInternalSchema },
   output: {schema: AutonomousUpdateOutputSchema},
   prompt: `You are Lunafreya, an AI assistant. The user has enabled autonomous updates.

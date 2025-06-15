@@ -15,8 +15,8 @@
  * - SuggestRelevantActionsOutput - The return type for the suggestRelevantActions function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {ai}from '@/ai/genkit';
+import {z}from 'genkit';
 import { searchGoogleDriveTool } from '@/ai/tools/google-drive-tool';
 import { searchGitHubIssuesTool, getGitHubRepoFileContentTool } from '@/ai/tools/github-tool'; // Import GitHub tools
 
@@ -56,26 +56,26 @@ const suggestRelevantActionsPrompt = ai.definePrompt({
   output: {schema: SuggestRelevantActionsOutputSchema},
   tools: [searchGoogleDriveTool, searchGitHubIssuesTool, getGitHubRepoFileContentTool], // Make tools available
   prompt: `Based on the current conversation context: {{{conversationContext}}} and the user's goals: {{{userGoals}}}, suggest a list of 3-4 relevant actions the user can take.
-  Return the actions as a list of strings in the 'suggestedActions' field. Each string should be a concise, actionable phrase.
+Return the actions as a list of strings in the 'suggestedActions' field. Each string should be a concise, actionable phrase.
 
-  Consider actions like:
-  - "Search the web for [relevant topic from context]"
-  - "Generate code for [relevant task from context] in [language]"
-  - "Enhance the following text: [snippet from context]"
-  - "Explain [concept from context] further"
-  - "Summarize the key points of our conversation"
-  - "Brainstorm ideas for [topic from context]"
+Consider actions like:
+- "Search the web for [relevant topic from context]"
+- "Generate code for [relevant task from context] in [language]"
+- "Enhance the following text: [snippet from context]"
+- "Explain [concept from context] further"
+- "Summarize the key points of our conversation"
+- "Brainstorm ideas for [topic from context]"
 
-  If the conversation or goals mention needing information that might be in user's documents, you can suggest using the 'searchGoogleDriveTool'.
-  For example: "Search Google Drive for [relevant document name or topic]"
+If the conversation or goals mention needing information that might be in user's documents, you can suggest using the 'searchGoogleDriveTool'.
+For example: "Search Google Drive for [relevant document name or topic]"
 
-  If the conversation involves code, repositories, or software development issues, you can suggest using GitHub tools.
-  For example:
-  - "Search GitHub issues in [owner/repo] for [topic]"
-  - "Get content of [filepath] from GitHub repo [owner/repo]"
+If the conversation involves code, repositories, or software development issues, you can suggest using GitHub tools.
+For example:
+- "Search GitHub issues in [owner/repo] for [topic]"
+- "Get content of [filepath] from GitHub repo [owner/repo]"
 
-  Be specific and provide actions directly applicable to the context and goals. Avoid generic suggestions.
-  Ensure the output is a JSON object with the 'suggestedActions' array.
+Be specific and provide actions directly applicable to the context and goals. Avoid generic suggestions.
+Ensure the output is a JSON object with the 'suggestedActions' array.
   `,
 });
 
@@ -125,4 +125,3 @@ const suggestRelevantActionsFlow = ai.defineFlow(
     };
   }
 );
-

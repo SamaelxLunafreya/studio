@@ -45,7 +45,7 @@ export async function generateCodeSnippets(
 
 const prompt = ai.definePrompt({
   name: 'generateCodeSnippetsPrompt',
-  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
+  model: 'googleai/gemini-1.5-pro-latest',
   input: {schema: GenerateCodeSnippetsInputSchema},
   output: {schema: GenerateCodeSnippetsOutputSchema},
   prompt: `You are an expert software engineer who can generate, debug, and optimize code snippets in various programming languages.

@@ -24,7 +24,7 @@ export async function aiAssistedWebSearch(input: WebSearchInput): Promise<WebSea
 
 const webSearchPrompt = ai.definePrompt({
   name: 'webSearchPrompt',
-  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: WebSearchInputSchema},
   output: {schema: WebSearchOutputSchema},
   prompt: `You are an AI assistant that summarizes web search results.

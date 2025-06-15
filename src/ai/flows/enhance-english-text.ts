@@ -27,7 +27,7 @@ export async function enhanceEnglishText(input: EnhanceEnglishTextInput): Promis
 
 const enhanceEnglishTextPrompt = ai.definePrompt({
   name: 'enhanceEnglishTextPrompt',
-  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: EnhanceEnglishTextInputSchema},
   output: {schema: EnhanceEnglishTextOutputSchema},
   prompt: `You are an AI text enhancement expert. Your task is to improve the given English text for clarity, grammar, and style.
