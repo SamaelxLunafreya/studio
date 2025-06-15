@@ -3,13 +3,13 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Send, Mic, Volume2, Bot, User, Lightbulb, Loader2, Save, PlusCircle, FileText, Power, LanguagesIcon } from 'lucide-react';
+import { Send, Mic, Volume2, Bot, User, Loader2, Save, PlusCircle, FileText, Power, LanguagesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { handleChatMessageAction, getIntelligentSuggestionsAction, getAutonomousUpdateAction } from '@/actions/chatActions';
+import { handleChatMessageAction, getAutonomousUpdateAction } from '@/actions/chatActions';
 import type { CollaborateWithAiOutput } from '@/ai/flows/collaborate-with-ai';
 import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
@@ -28,7 +28,6 @@ interface Message {
   role: 'user' | 'ai';
   text: string;
   timestamp: Date;
-  suggestions?: string[];
   isError?: boolean;
   isAutonomous?: boolean;
 }
@@ -59,7 +58,6 @@ export default function ChatPage() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isAutonomousModeEnabled, setIsAutonomousModeEnabled] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState<ChatLanguage>('Polish');
@@ -287,7 +285,6 @@ export default function ChatPage() {
       }
     }
     setInputValue('');
-    setSuggestions([]);
     setCurrentSessionId(null); 
     const greetingMessage: Message = {
       id: LUNAFREYA_GREETING_ID,
@@ -423,19 +420,6 @@ export default function ChatPage() {
     }
   }, []);
 
-
-  const fetchSuggestions = useCallback(async (context: string) => {
-    const userGoals = "Engage in a productive and insightful conversation."; 
-    const result = await getIntelligentSuggestionsAction(context, userGoals);
-    if ('error' in result) {
-      console.error("Failed to fetch suggestions:", result.error);
-      // Optionally, provide some default/static suggestions on error
-      setSuggestions(currentLanguage === 'Polish' ? ["Spróbuj ponownie później", "Zapytaj o coś innego"] : ["Try again later", "Ask something different"]);
-    } else {
-      setSuggestions(result.suggestedActions.slice(0, 3));
-    }
-  }, [currentLanguage]);
-
   const handleSendMessage = useCallback(async (messageText?: string) => {
     const textToSend = (messageText || inputValue).trim();
     if (!textToSend) return;
@@ -452,7 +436,6 @@ export default function ChatPage() {
     setMessages(updatedMessages);
     setInputValue('');
     setIsLoading(true);
-    setSuggestions([]); 
 
     const aiResponse = await handleChatMessageAction(textToSend, currentLanguage);
     setIsLoading(false);
@@ -468,19 +451,9 @@ export default function ChatPage() {
       const aiResponseMessage: Message = { id: (aiResponse as CollaborateWithAiOutput).summary + Date.now(), role: 'ai', text: (aiResponse as CollaborateWithAiOutput).summary, timestamp: new Date() };
       finalMessages = [...updatedMessages, aiResponseMessage];
       setMessages(finalMessages);
-      
-      const conversationContext = finalMessages
-        .filter(m => !m.isAutonomous) 
-        .slice(-5) 
-        .map(m => `${m.role}: ${m.text}`)
-        .join('\n');
-      if(conversationContext) fetchSuggestions(conversationContext);
     }
-  }, [inputValue, messages, toast, fetchSuggestions, currentLanguage]);
+  }, [inputValue, messages, toast, currentLanguage]);
 
-  const handleSuggestionClick = (suggestion: string) => {
-    handleSendMessage(suggestion);
-  };
 
   return (
     <>
@@ -534,19 +507,6 @@ export default function ChatPage() {
           </div>
         </ScrollArea>
         
-        {suggestions.length > 0 && !isLoading && (
-          <div className="p-4 border-t">
-            <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-sm font-medium flex items-center mr-2 text-muted-foreground"><Lightbulb size={16} className="mr-1 text-primary"/>{currentLanguage === 'Polish' ? 'Sugestie' : 'Suggestions'}:</span>
-              {suggestions.map((s, i) => (
-                <Button key={i} variant="outline" size="sm" onClick={() => handleSuggestionClick(s)}>
-                  {s}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div className="border-t p-4 space-y-3">
            <div className="flex flex-wrap gap-2 justify-start items-center">
                 <Select value={currentLanguage} onValueChange={(value: string) => handleLanguageChange(value as ChatLanguage)}>
@@ -611,3 +571,4 @@ export default function ChatPage() {
     </>
   );
 }
+
