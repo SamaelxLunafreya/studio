@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -11,6 +12,17 @@ import { useToast } from '@/hooks/use-toast';
 import { uploadToMemoryAction } from '@/actions/memoryActions';
 import { fileToDataUri } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
+
+interface MemoryItem {
+  id: string;
+  type: 'text' | 'pdf';
+  content?: string; // For text items
+  fileName?: string; // For PDF items
+  timestamp: number;
+}
+
+const MEMORY_ITEMS_LOCAL_STORAGE_KEY = 'lunafreyaMemoryItems';
+const MAX_MEMORY_ITEMS = 50; // Limit the number of items stored
 
 export default function MemoryUploadPage() {
   const [textContent, setTextContent] = useState('');
@@ -28,7 +40,7 @@ export default function MemoryUploadPage() {
           variant: 'destructive',
         });
         setPdfFile(null);
-        event.target.value = ''; // Reset file input
+        event.target.value = ''; 
         return;
       }
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
@@ -38,10 +50,28 @@ export default function MemoryUploadPage() {
           variant: 'destructive',
         });
         setPdfFile(null);
-        event.target.value = ''; // Reset file input
+        event.target.value = ''; 
         return;
       }
       setPdfFile(file);
+    }
+  };
+
+  const saveItemToLocalStorage = (item: MemoryItem) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const existingItemsJson = localStorage.getItem(MEMORY_ITEMS_LOCAL_STORAGE_KEY);
+      let existingItems: MemoryItem[] = existingItemsJson ? JSON.parse(existingItemsJson) : [];
+      existingItems.unshift(item); // Add new item to the beginning
+      existingItems = existingItems.slice(0, MAX_MEMORY_ITEMS); // Enforce limit
+      localStorage.setItem(MEMORY_ITEMS_LOCAL_STORAGE_KEY, JSON.stringify(existingItems));
+    } catch (error) {
+      console.error("Error saving memory item to localStorage:", error);
+      toast({
+        title: "Local Storage Error",
+        description: "Could not save item to local memory view.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -84,13 +114,31 @@ export default function MemoryUploadPage() {
       });
     } else {
       toast({
-        title: 'Upload Successful',
-        description: result.message,
+        title: 'Upload Acknowledged by AI',
+        description: `${result.message} Item also saved for local viewing.`,
         icon: <CheckCircle className="h-5 w-5" />,
       });
+
+      const newItemId = Date.now().toString();
+      if (textContent) {
+        saveItemToLocalStorage({
+          id: newItemId + '-text',
+          type: 'text',
+          content: textContent,
+          timestamp: Date.now(),
+        });
+      }
+      if (pdfFile) {
+        saveItemToLocalStorage({
+          id: newItemId + '-pdf',
+          type: 'pdf',
+          fileName: pdfFile.name,
+          timestamp: Date.now(),
+        });
+      }
+
       setTextContent('');
       setPdfFile(null);
-      // Reset file input visually
       const fileInput = document.getElementById('pdfFile') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
     }
@@ -107,7 +155,7 @@ export default function MemoryUploadPage() {
               <CardTitle className="font-headline text-2xl">Upload to AI Memory</CardTitle>
             </div>
             <CardDescription>
-              Add text snippets or PDF documents to the AI's memory modules. This helps the AI learn and provide more personalized and relevant responses.
+              Add text snippets or PDF documents to the AI's memory modules. This helps the AI learn and provide more personalized and relevant responses. Uploaded items will be viewable locally.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -164,3 +212,5 @@ export default function MemoryUploadPage() {
     </>
   );
 }
+
+    

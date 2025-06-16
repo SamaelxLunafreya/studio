@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
@@ -12,17 +13,17 @@ import {
   Moon,
   Sun,
   Github,
-  // Bot, // Removed Bot icon import
   FileText,
   Brain,
   Users,
-  PenTool, // For Text Enhancer
-  TerminalSquare, // For Code Generator
-  Globe, // For Web Search
-  Palette, // For Workspace
-  Cog, // For Settings
-  ImagePlay, // For Image Generator
-  Languages, // For Translator
+  PenTool, 
+  TerminalSquare, 
+  Globe, 
+  Palette, 
+  Cog, 
+  ImagePlay, 
+  Languages,
+  Files, // Added Files icon
 } from 'lucide-react';
 
 import './globals.css';
@@ -40,10 +41,7 @@ import {
   SidebarTrigger,
   SidebarMenuBadge,
 } from '@/components/ui/sidebar';
-// import { Button } from '@/components/ui/button'; // No longer used
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-// SheetTitle import is removed as it's no longer directly used here for the main title
-// import { SheetTitle } from '@/components/ui/sheet'; 
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
 
@@ -58,6 +56,7 @@ const navItems = [
   { href: '/chat-history', icon: History, label: 'Chat History' },
   { href: '/workspace', icon: Palette, label: 'Workspace' },
   { href: '/memory-upload', icon: UploadCloud, label: 'Memory Upload' },
+  { href: '/view-memory', icon: Files, label: 'View Memory' }, // New item
   { href: '/text-enhancer', icon: PenTool, label: 'Text Enhancer' },
   { href: '/code-generator', icon: TerminalSquare, label: 'Code Generator' },
   { href: '/image-generator', icon: ImagePlay, label: 'Image Generator' },
@@ -85,18 +84,14 @@ export default function RootLayout({
             <Sidebar>
               <SidebarHeader>
                 <div className="flex items-center gap-2 p-2">
-                   {/* Custom SVG Logo */}
                    <svg
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
                       fill="currentColor"
                       className="h-8 w-8 text-primary"
                     >
-                      {/* Left Wing */}
                       <path d="M6.5 15.5C4.95 14.53 3.83 12.94 3.5 11.07 3.08 8.53 4.29 6.11 6.51 5.07 6.95 4.86 7.42 4.99 7.63 5.44 7.85 5.88 7.71 6.35 7.27 6.56 5.72 7.27 5.02 8.93 5.29 10.43 5.47 11.77 6.32 13.03 7.57 13.88L6.5 15.5z" />
-                      {/* Right Wing */}
                       <path d="M17.5 15.5C19.05 14.53 20.17 12.94 20.5 11.07 20.92 8.53 19.71 6.11 17.49 5.07 17.05 4.86 16.58 4.99 16.37 5.44 16.15 5.88 16.29 6.35 16.73 6.56 18.28 7.27 18.98 8.93 18.71 10.43 18.53 11.77 17.68 13.03 16.43 13.88L17.5 15.5z" />
-                      {/* Heart */}
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                     </svg>
                   <div className="font-headline text-xl font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">Lunafreya</div>
@@ -139,9 +134,7 @@ export default function RootLayout({
               <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6 md:h-16">
                 <SidebarTrigger className="md:hidden" />
                 <h2 id="page-title" className="font-headline text-lg font-semibold text-foreground sm:text-xl">
-                  {/* Page title will be set dynamically */}
                 </h2>
-                {/* <ThemeToggle /> Theme toggle to be created */}
               </header>
               <main className="flex-1 overflow-y-auto p-4 sm:p-6">
                 {children}
@@ -154,3 +147,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    
