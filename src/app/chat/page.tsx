@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Send, Mic, Volume2, Bot, User, Loader2, Save, PlusCircle, FileText, Power, LanguagesIcon } from 'lucide-react';
+import { Send, Mic, Volume2, Bot, User, Loader2, Save, PlusCircle, FileText, Power, LanguagesIcon, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
