@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { History, Trash2, FileText, AlertTriangle, CheckCircle, Archive, Loader2 } from 'lucide-react';
+import { History, Trash2, FileText, AlertTriangle, CheckCircle, Archive, Loader2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,6 +30,7 @@ interface Message {
   timestamp: Date | string; 
   suggestions?: string[];
   isError?: boolean;
+  isAutonomous?: boolean; // Added to match chat page message type
 }
 
 interface SavedChatSession {
@@ -40,7 +41,6 @@ interface SavedChatSession {
 }
 
 const CHAT_HISTORY_LOCAL_STORAGE_KEY = 'chatHistory';
-const LUNAFREYA_GREETING_ID = 'lunafreya-initial-greeting'; // To identify initial greeting message
 
 export default function ChatHistoryPage() {
   const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
@@ -62,14 +62,14 @@ export default function ChatHistoryPage() {
               timestamp: new Date(msg.timestamp) 
             })),
           }))
-          // Filter out any sessions that might only contain the greeting
-          .filter(session => !(session.messages.length === 1 && session.messages[0].id === LUNAFREYA_GREETING_ID))
+          // Filter out any sessions that only contain autonomous messages or are empty
+          .filter(session => session.messages.some(m => !m.isAutonomous))
           .sort((a, b) => b.savedAt - a.savedAt);
         setSavedSessions(processedHistory);
       } catch (error) {
         console.error("Error parsing chat history:", error);
         toast({ title: "Error", description: "Could not load chat history. It might be corrupted.", variant: "destructive" });
-        localStorage.removeItem(CHAT_HISTORY_LOCAL_STORAGE_KEY); // Clear corrupted history
+        localStorage.removeItem(CHAT_HISTORY_LOCAL_STORAGE_KEY);
         setSavedSessions([]);
       }
     } else {
@@ -98,12 +98,11 @@ export default function ChatHistoryPage() {
 
   const handleArchiveSession = async (session: SavedChatSession) => {
     setArchivingId(session.id);
-    // Filter out the greeting message before archiving, if present
-    const messagesToArchive = session.messages.filter(msg => msg.id !== LUNAFREYA_GREETING_ID);
+    const messagesToArchive = session.messages.filter(msg => !msg.isAutonomous);
     if (messagesToArchive.length === 0) {
       toast({
         title: "Archive Canceled",
-        description: "Cannot archive an empty chat or a chat with only the initial greeting.",
+        description: "Cannot archive an empty chat or a chat with only autonomous messages.",
         variant: "destructive"
       });
       setArchivingId(null);
@@ -129,16 +128,14 @@ export default function ChatHistoryPage() {
         description: `"${session.name}" has been archived to AI memory.`,
         icon: <CheckCircle className="h-5 w-5" />
       });
-      // Optionally, delete the session from local history after archiving
-      // deleteSession(session.id); 
     }
   };
 
   const getFirstMeaningfulMessage = (messages: Message[]): string => {
-    const firstUserMsg = messages.find(m => m.role === 'user');
+    const firstUserMsg = messages.find(m => m.role === 'user' && !m.isAutonomous);
     if (firstUserMsg) return firstUserMsg.text;
-    const firstNonGreetingAiMsg = messages.find(m => m.role === 'ai' && m.id !== LUNAFREYA_GREETING_ID);
-    if (firstNonGreetingAiMsg) return firstNonGreetingAiMsg.text;
+    const firstNonAutonomousAiMsg = messages.find(m => m.role === 'ai' && !m.isAutonomous);
+    if (firstNonAutonomousAiMsg) return firstNonAutonomousAiMsg.text;
     return "Chat preview unavailable.";
   };
 
@@ -184,7 +181,7 @@ export default function ChatHistoryPage() {
           <CardContent>
             {savedSessions.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground">
-                <History size={48} className="mx-auto mb-4" />
+                <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium">No Saved Chats Yet</p>
                 <p>Your saved chat sessions will appear here.</p>
                 <Button asChild variant="link" className="mt-4">
@@ -225,7 +222,7 @@ export default function ChatHistoryPage() {
                           </AlertDialog>
                         </CardTitle>
                         <CardDescription className="text-xs">
-                          Saved: {new Date(session.savedAt).toLocaleString()} &bull; {session.messages.filter(m => m.id !== LUNAFREYA_GREETING_ID).length} meaningful messages
+                          Saved: {new Date(session.savedAt).toLocaleString()} &bull; {session.messages.filter(m => !m.isAutonomous).length} meaningful messages
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0 pb-3">
@@ -265,5 +262,3 @@ export default function ChatHistoryPage() {
     </>
   );
 }
-
-    
