@@ -16,8 +16,10 @@ import {z} from 'genkit';
 // Define the input schema for the flow
 const CollaborateWithAiInputSchema = z.object({
   topic: z.string().describe('The topic for collaborative thinking.'),
-  aiAgentCount: z.number().min(1).default(2).describe('The number of Lunafreya\'s AI cores to involve in the collaboration. Min is 1.'),
-  instructions: z.string().optional().describe('Optional general instructions for Lunafreya\'s collaborative process.'),
+  aiAgentCount: z.number().min(1).default(1).describe('The number of Lunafreya\'s AI cores to involve in the collaboration. Min is 1.'),
+  baseInstructions: z.string().describe('The core instructions defining the AI\'s base persona and task for this interaction.'),
+  userDefinedPersonaContext: z.string().optional().describe('Additional persona context defined by the user in settings.'),
+  recentMemorySnippets: z.string().optional().describe('Recent text snippets from the user\'s memory module for additional context.'),
   language: z.enum(['Polish', 'English']).default('Polish').describe('The desired output language for the AI response.'),
 });
 export type CollaborateWithAiInput = z.infer<typeof CollaborateWithAiInputSchema>;
@@ -44,7 +46,9 @@ export async function collaborateWithAi(input: CollaborateWithAiInput): Promise<
 const AiAgentPromptInputInternalSchema = z.object({
   topic: z.string().describe('The topic for discussion.'),
   agentId: z.number().describe('The ID of the AI core.'),
-  overallInstructions: z.string().describe('Overall instructions for the collaboration from the user.'),
+  baseInstructions: z.string().describe('Core instructions for the AI agent.'),
+  userDefinedPersonaContext: z.string().optional(),
+  recentMemorySnippets: z.string().optional(),
   agentFocus: z.string().describe("The specific thinking style or focus for this AI core."),
   isPolish: z.boolean().describe("Internal flag: true if the language is Polish."),
 });
@@ -52,7 +56,7 @@ const AiAgentPromptInputInternalSchema = z.object({
 // Define the prompt for a single AI core
 const aiAgentPrompt = ai.definePrompt({
   name: 'aiAgentPrompt',
-  model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: AiAgentPromptInputInternalSchema},
   output: z.object({
     agentId: z.number().describe('The ID of the AI core.'),
@@ -63,32 +67,52 @@ const aiAgentPrompt = ai.definePrompt({
 Jesteś Rdzeniem AI #{{agentId}}, jedną ze specjalistycznych jednostek myślowych Lunafreyi.
 Lunafreya to zaawansowany asystent AI.
 
-Temat do wspólnej dyskusji (może być w innym języku, ale Ty odpowiadaj po polsku):
+Twoje podstawowe instrukcje i osobowość (zawsze odpowiadaj po polsku, chyba że temat jest w innym języku i wymaga odpowiedzi w tym języku):
+"{{{baseInstructions}}}"
+
+{{#if userDefinedPersonaContext}}
+Dodatkowe informacje o preferencjach użytkownika, które powinieneś uwzględnić:
+"{{{userDefinedPersonaContext}}}"
+{{/if}}
+
+{{#if recentMemorySnippets}}
+Oto kilka niedawnych notatek lub fragmentów z pamięci użytkownika, weź je pod uwagę:
+"{{{recentMemorySnippets}}}"
+{{/if}}
+
+Temat do wspólnej dyskusji:
 {{{topic}}}
 
 Twój specyficzny analityczny sposób podejścia/skupienie dla tego zadania jako Rdzeń #{{agentId}} to:
 "{{{agentFocus}}}"
 
-Ogólne instrukcje dla procesu współpracy Lunafreyi od użytkownika (mogą być w innym języku, ale Ty odpowiedz zawsze po polsku):
-"{{{overallInstructions}}}"
-
-Na podstawie tematu, twojego specyficznego skupienia i ogólnych instrukcji użytkownika, wygeneruj jeden odrębny pomysł, spostrzeżenie lub perspektywę. **Odpowiedz w języku polskim.**
+Na podstawie tematu, twojego specyficznego skupienia, ogólnych instrukcji, dodatkowych informacji o użytkowniku i notatek z pamięci, wygeneruj jeden odrębny pomysł, spostrzeżenie lub perspektywę. **Odpowiedz w języku polskim.**
 Zwróć obiekt JSON zawierający "agentId" (które jest {{agentId}}), twój "focus" ("{{{agentFocus}}}") oraz twój "pomysł" (w polu "idea").
 Upewnij się, że twój "pomysł" jest unikalny, wnikliwy i bezpośrednio przyczynia się do wieloaspektowego zrozumienia tematu. **Twoja odpowiedź w polu "idea" musi być w języku polskim.**
 {{else}}
 You are AI Core #{{agentId}}, one of Lunafreya's specialized thinking units.
 Lunafreya is an advanced AI assistant.
 
-Topic for collaborative discussion (may be in another language, but you must respond in English):
+Your base instructions and persona (always respond in English unless the topic requires a different language):
+"{{{baseInstructions}}}"
+
+{{#if userDefinedPersonaContext}}
+Additional user preferences to consider:
+"{{{userDefinedPersonaContext}}}"
+{{/if}}
+
+{{#if recentMemorySnippets}}
+Here are some recent notes or snippets from the user's memory, please consider them:
+"{{{recentMemorySnippets}}}"
+{{/if}}
+
+Topic for collaborative discussion:
 {{{topic}}}
 
 Your specific analytical approach/focus for this task as Core #{{agentId}} is:
 "{{{agentFocus}}}"
 
-General instructions for Lunafreya's collaborative process from the user (may be in another language, but you must always respond in English):
-"{{{overallInstructions}}}"
-
-Based on the topic, your specific focus, and the user's general instructions, generate one distinct idea, insight, or perspective. **Respond in English.**
+Based on the topic, your specific focus, general instructions, additional user information, and memory snippets, generate one distinct idea, insight, or perspective. **Respond in English.**
 Return a JSON object containing "agentId" (which is {{agentId}}), your "focus" ("{{{agentFocus}}}"), and your "idea".
 Ensure your "idea" is unique, insightful, and directly contributes to a multifaceted understanding of the topic. **Your response in the "idea" field must be in English.**
 {{/if}}
@@ -121,7 +145,7 @@ const collaborateWithAiFlow = ai.defineFlow(
     outputSchema: CollaborateWithAiOutputSchema,
   },
   async input => {
-    const {topic, aiAgentCount, instructions, language} = input;
+    const {topic, aiAgentCount, baseInstructions, userDefinedPersonaContext, recentMemorySnippets, language} = input;
     const isPolishLanguage = language === 'Polish';
 
     const agentIdeasResults = await Promise.all(
@@ -130,19 +154,19 @@ const collaborateWithAiFlow = ai.defineFlow(
         let agentFocusDescription: string;
 
         if (aiAgentCount === 1) {
-            agentFocusDescription = isPolishLanguage ? "Dostarcz kompleksową, główną perspektywę, biorąc pod uwagę wiele aspektów." : "Provide a comprehensive, primary perspective, considering multiple facets.";
+            agentFocusDescription = isPolishLanguage ? "Dostarcz kompleksową, główną perspektywę, biorąc pod uwagę wszystkie dostarczone informacje i konteksty." : "Provide a comprehensive, primary perspective, considering all provided information and contexts.";
         } else if (aiAgentCount <= agentFocuses.length) {
             agentFocusDescription = agentFocuses[agentIndex];
         } else {
             agentFocusDescription = agentFocuses[agentIndex % agentFocuses.length];
         }
         
-        const defaultInstructions = isPolishLanguage ? 'Proszę dostarczyć jeden innowacyjny pomysł związany z Twoim skupieniem. Odpowiedz po polsku.' : 'Please provide one innovative idea related to your focus. Respond in English.';
-
         const {output} = await aiAgentPrompt({
           topic,
           agentId,
-          overallInstructions: instructions ?? defaultInstructions,
+          baseInstructions,
+          userDefinedPersonaContext,
+          recentMemorySnippets,
           agentFocus: agentFocusDescription,
           isPolish: isPolishLanguage,
         });
@@ -162,7 +186,9 @@ const collaborateWithAiFlow = ai.defineFlow(
     const summaryPromptInputInternalSchema = z.object({
       topic: z.string(),
       ideas: z.array(z.object({agentId: z.number(), idea: z.string(), focus: z.string()})),
-      originalUserInstructions: z.string().optional(),
+      baseInstructions: z.string(),
+      userDefinedPersonaContext: z.string().optional(),
+      recentMemorySnippets: z.string().optional(),
       isPolish: z.boolean(),
     });
     const summaryPromptOutputSchema = z.object({
@@ -171,13 +197,23 @@ const collaborateWithAiFlow = ai.defineFlow(
 
     const summaryPrompt = ai.definePrompt({
       name: 'summaryPrompt',
-      model: 'googleai/gemini-1.5-flash-latest', // Explicitly set model
+      model: 'googleai/gemini-1.5-flash-latest', 
       input: { schema: summaryPromptInputInternalSchema },
       output: { schema: summaryPromptOutputSchema },
       prompt: `{{#if isPolish}}
 Jesteś Lunafreyą, zaawansowanym asystentem AI. Twoje wewnętrzne rdzenie myślowe wspólnie przetworzyły temat: "{{{topic}}}".
-{{#if originalUserInstructions}}
-Użytkownik podał następujące początkowe instrukcje: "{{{originalUserInstructions}}}"
+
+Twoje podstawowe instrukcje i osobowość (zawsze odpowiadaj po polsku):
+"{{{baseInstructions}}}"
+
+{{#if userDefinedPersonaContext}}
+Dodatkowe informacje o preferencjach użytkownika, które zostały uwzględnione:
+"{{{userDefinedPersonaContext}}}"
+{{/if}}
+
+{{#if recentMemorySnippets}}
+Uwzględnione niedawne notatki/fragmenty z pamięci użytkownika:
+"{{{recentMemorySnippets}}}"
 {{/if}}
 
 Oto pomysły i perspektywy wygenerowane przez Twoje rdzenie (będą po polsku):
@@ -186,12 +222,22 @@ Oto pomysły i perspektywy wygenerowane przez Twoje rdzenie (będą po polsku):
 {{/each}}
 
 Zsyntetyzuj te różnorodne pomysły w jedno, spójne i wnikliwe podsumowanie dla użytkownika. **Podsumowanie musi być w języku polskim.**
-Podsumowanie powinno być kompleksowe, odnosić się do tematu użytkownika i oryginalnych instrukcji (jeśli istnieją) oraz odzwierciedlać wspólny wysiłek.
+Podsumowanie powinno być kompleksowe, odnosić się do tematu użytkownika, Twoich podstawowych instrukcji oraz dodatkowego kontekstu użytkownika i pamięci (jeśli istnieją) oraz odzwierciedlać wspólny wysiłek.
 Przedstaw to jako swoją ostateczną odpowiedź. **Twoja odpowiedź w polu "summary" musi być w języku polskim.**
 {{else}}
 You are Lunafreya, an advanced AI assistant. Your internal thinking cores have collaboratively processed the topic: "{{{topic}}}".
-{{#if originalUserInstructions}}
-The user provided the following initial instructions: "{{{originalUserInstructions}}}"
+
+Your base instructions and persona (always respond in English):
+"{{{baseInstructions}}}"
+
+{{#if userDefinedPersonaContext}}
+Additional user preferences considered:
+"{{{userDefinedPersonaContext}}}"
+{{/if}}
+
+{{#if recentMemorySnippets}}
+Recent notes/snippets from user memory considered:
+"{{{recentMemorySnippets}}}"
 {{/if}}
 
 Here are the ideas and perspectives generated by your cores (will be in English):
@@ -200,7 +246,7 @@ Here are the ideas and perspectives generated by your cores (will be in English)
 {{/each}}
 
 Synthesize these diverse ideas into a single, coherent, and insightful summary for the user. **The summary must be in English.**
-The summary should be comprehensive, address the user's topic and original instructions (if any), and reflect the collaborative effort.
+The summary should be comprehensive, address the user's topic, your base instructions, and additional user/memory context (if any), and reflect the collaborative effort.
 Present this as your final response. **Your response in the "summary" field must be in English.**
 {{/if}}
       `,
@@ -217,7 +263,9 @@ Present this as your final response. **Your response in the "summary" field must
     const {output: summaryOutput} = await summaryPrompt({
       topic,
       ideas: validAgentIdeas,
-      originalUserInstructions: instructions,
+      baseInstructions,
+      userDefinedPersonaContext,
+      recentMemorySnippets,
       isPolish: isPolishLanguage,
     });
 
@@ -227,3 +275,4 @@ Present this as your final response. **Your response in the "summary" field must
     };
   }
 );
+

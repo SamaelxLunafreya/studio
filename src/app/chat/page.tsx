@@ -37,14 +37,26 @@ interface SavedChatSession {
   name: string;
   messages: Message[];
   savedAt: number;
-  language?: 'Polish' | 'English'; // Store language with session
+  language?: 'Polish' | 'English'; 
 }
+
+interface MemoryItem {
+  id: string;
+  type: 'text' | 'pdf';
+  content?: string;
+  fileName?: string;
+  timestamp: number;
+}
+
 
 type ChatLanguage = 'Polish' | 'English';
 
 const CHAT_HISTORY_LOCAL_STORAGE_KEY = 'chatHistory';
 const AUTONOMOUS_MODE_STORAGE_KEY = 'autonomousModeEnabled';
 const CHAT_LANGUAGE_STORAGE_KEY = 'chatLanguagePreference';
+const AI_PERSONA_DESCRIPTION_STORAGE_KEY = 'aiPersonaDescription';
+const MEMORY_ITEMS_LOCAL_STORAGE_KEY = 'lunafreyaMemoryItems';
+const MAX_MEMORY_SNIPPETS_TO_SEND = 2; // How many recent text memory items to send
 
 export default function ChatPage() {
   const router = useRouter();
@@ -178,7 +190,7 @@ export default function ChatPage() {
 
   const saveCurrentChat = useCallback((messagesToSave?: Message[]) => {
     const currentMessages = messagesToSave || messages;
-    const meaningfulMessages = currentMessages.filter(m => !m.isAutonomous); // No more greeting ID
+    const meaningfulMessages = currentMessages.filter(m => !m.isAutonomous); 
     if (meaningfulMessages.length === 0) return null;
 
     let newSessionId = currentSessionId || Date.now().toString();
@@ -222,7 +234,7 @@ export default function ChatPage() {
       toast({ title: sessionLang === 'Polish' ? 'Czat Załadowany' : 'Chat Loaded', description: `${sessionLang === 'Polish' ? 'Załadowano' : 'Loaded'} "${session.name}".` });
     } else {
       toast({ title: 'Błąd', description: currentLanguage === 'Polish' ? 'Nie znaleziono sesji czatu.' : 'Chat session not found.', variant: 'destructive' });
-      setMessages(prev => prev.filter(m => m.isAutonomous)); // Clear non-autonomous messages
+      setMessages(prev => prev.filter(m => m.isAutonomous)); 
       setCurrentSessionId(null);
     }
   }, [toast, getChatHistory, currentLanguage]);
@@ -235,13 +247,12 @@ export default function ChatPage() {
         loadChatSession(sessionIdFromUrl);
       }
     } else {
-        // If no session ID in URL, and we are not already in a session, ensure chat is clean (only autonomous messages)
         if (!currentSessionId) {
              setMessages(prev => prev.filter(m => m.isAutonomous));
         }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, loadChatSession, currentSessionId]); // Added currentSessionId
+  }, [searchParams, loadChatSession, currentSessionId]); 
 
 
   const handleNewChat = () => {
@@ -254,7 +265,6 @@ export default function ChatPage() {
     }
     setInputValue('');
     setCurrentSessionId(null);
-    // Keep recent autonomous messages if any, clear others
     setMessages(prev => prev.filter(m => m.isAutonomous && m.timestamp.getTime() > Date.now() - 5*60*1000));
     router.push('/chat', { scroll: false });
   };
@@ -345,7 +355,7 @@ export default function ChatPage() {
         targetVoice = microsoftPaulina || anyPaulina ||
           voices.find(voice => voice.lang.startsWith('pl') && polishFemaleNames.some(name => voice.name.toLowerCase().includes(name))) ||
           voices.find(voice => voice.lang.startsWith('pl') && (voice.name.toLowerCase().includes('kobieta') || voice.name.toLowerCase().includes('female')));
-      } else { // English
+      } else { 
         targetVoice =
           voices.find(voice => voice.lang.startsWith('en') && voice.name.toLowerCase().includes('juniper')) ||
           voices.find(voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('female')) ||
@@ -389,7 +399,37 @@ export default function ChatPage() {
     setInputValue('');
     setIsLoading(true);
 
-    const aiResponse = await handleChatMessageAction(textToSend, currentLanguage);
+    let userDefinedPersonaContext: string | undefined;
+    let recentMemorySnippets: string | undefined;
+
+    if (typeof window !== 'undefined') {
+      userDefinedPersonaContext = localStorage.getItem(AI_PERSONA_DESCRIPTION_STORAGE_KEY) || undefined;
+      
+      const memoryItemsJson = localStorage.getItem(MEMORY_ITEMS_LOCAL_STORAGE_KEY);
+      if (memoryItemsJson) {
+        try {
+          const memoryItems: MemoryItem[] = JSON.parse(memoryItemsJson);
+          const textSnippets = memoryItems
+            .filter(item => item.type === 'text' && item.content)
+            .sort((a, b) => b.timestamp - a.timestamp) // newest first
+            .slice(0, MAX_MEMORY_SNIPPETS_TO_SEND)
+            .map(item => item.content)
+            .join('\n---\n'); // Join snippets with a separator
+          if (textSnippets) {
+            recentMemorySnippets = textSnippets;
+          }
+        } catch (e) {
+          console.error("Error parsing memory items for chat context:", e);
+        }
+      }
+    }
+
+    const aiResponse = await handleChatMessageAction(
+      textToSend, 
+      currentLanguage,
+      userDefinedPersonaContext,
+      recentMemorySnippets
+    );
     setIsLoading(false);
 
     if ('error' in aiResponse) {
@@ -526,4 +566,3 @@ export default function ChatPage() {
     </>
   );
 }
-
