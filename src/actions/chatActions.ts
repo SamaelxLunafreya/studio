@@ -5,7 +5,7 @@ import { collaborateWithAi, type CollaborateWithAiInput, type CollaborateWithAiO
 import { getAutonomousUpdate, type GetAutonomousUpdateInput, type AutonomousUpdateOutput } from '@/ai/flows/get-autonomous-update-flow';
 import { generateCasualGreeting, type GenerateCasualGreetingInput, type GenerateCasualGreetingOutput } from '@/ai/flows/generate-casual-greeting-flow';
 
-const simplePolishGreetings = ["hej", "hejka", "cześć", "czesc", "siema", "witaj", "elo"]; // Keep lowercase for comparison
+const simplePolishGreetings = ["hej", "hejka", "cześć", "czesc", "siema", "witaj", "elo", "dzien dobry", "dzień dobry", "dobry wieczor", "dobry wieczór"]; // Keep lowercase for comparison
 const aiName = "luna"; // Define AI name for matching
 
 export async function handleChatMessageAction(userInput: string, language: 'Polish' | 'English'): Promise<CollaborateWithAiOutput | { error: string }> {
@@ -15,29 +15,28 @@ export async function handleChatMessageAction(userInput: string, language: 'Poli
     // Check for simple Polish greetings if language is Polish
     if (language === 'Polish') {
       const isSimpleGreetingAlone = simplePolishGreetings.includes(normalizedUserInput);
-      // Check for "greeting luna" pattern
-      const isGreetingPlusLuna = simplePolishGreetings.some(greeting =>
-        normalizedUserInput === `${greeting} ${aiName}`
+      // Check for "greeting luna" or "luna greeting" pattern
+      const isGreetingWithLuna = simplePolishGreetings.some(greeting =>
+        normalizedUserInput === `${greeting} ${aiName}` || normalizedUserInput === `${aiName} ${greeting}`
       );
 
-      if (isSimpleGreetingAlone || isGreetingPlusLuna) {
+      if (isSimpleGreetingAlone || isGreetingWithLuna) {
         const greetingInput: GenerateCasualGreetingInput = { language };
         const casualResult = await generateCasualGreeting(greetingInput);
         if (casualResult.greetingText) {
-          // Return in the format expected by CollaborateWithAiOutput
           return { summary: casualResult.greetingText, collaborativeIdeas: [] };
         }
       }
     }
 
-    // Proceed with complex collaboration for other inputs or English language
+    // Updated instructions for more direct responses
     const instructions = language === 'Polish'
-      ? "Jesteś Lunafreya, złożona z wielu wyspecjalizowanych rdzeni myślowych. Zaangażuj te rdzenie w głębokie wspólne myślenie, aby zapewnić użytkownikowi wszechstronne, kreatywne i wnikliwe odpowiedzi związane z jego tematem. Zbadaj różne aspekty i zaoferuj bogate perspektywy. W razie potrzeby zadawaj pytania wyjaśniające lub sugeruj powiązane obszary do zbadania. **Zawsze odpowiadaj po polsku.**"
-      : "You are Lunafreya, an AI composed of multiple specialized thinking cores. Engage these cores in deep collaborative thinking to provide the user with comprehensive, creative, and insightful responses related to their topic. Explore different angles and offer rich perspectives. If appropriate, ask clarifying questions or suggest related areas to explore further. **Always respond in English.**";
+      ? "Jesteś Lunafreya, pomocna asystentka AI. Odpowiadaj na pytania i prośby użytkownika w sposób jasny, zwięzły i pomocny. Staraj się być naturalna i konwersacyjna. Jeśli temat jest złożony, możesz przedstawić kluczowe perspektywy, ale unikaj nadmiernej analizy prostych zapytań. **Zawsze odpowiadaj po polsku.**"
+      : "You are Lunafreya, a helpful AI assistant. Respond to the user's questions and requests clearly, concisely, and helpfully. Aim to be natural and conversational. If the topic is complex, you can offer key perspectives, but avoid over-analyzing simple queries. **Always respond in English.**";
 
     const input: CollaborateWithAiInput = {
       topic: userInput,
-      aiAgentCount: 2,
+      aiAgentCount: 1, // Reduced agent count for more directness initially
       instructions: instructions,
       language: language,
     };
@@ -55,17 +54,13 @@ export async function getAutonomousUpdateAction(language: 'Polish' | 'English'):
   try {
     const input: GetAutonomousUpdateInput = { language };
     const result: AutonomousUpdateOutput = await getAutonomousUpdate(input);
-    return result; // The flow itself now handles its internal errors and returns the AutonomousUpdateOutput schema
+    return result; 
   } catch (error: any) {
     console.error('Critical error in getAutonomousUpdateAction or underlying getAutonomousUpdate flow:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error during autonomous update.';
-    // Even if the flow is supposed to handle errors, this catch is a safety net for unexpected issues
-    // in the action itself or if the flow throws an unhandled exception.
-    // We need to ensure this action *always* returns something conforming to the expected Promise type.
     const fallbackReflection = language === 'Polish' 
         ? "Coś zakłóciło mój wewnętrzny monolog. Spróbuję później wrócić do tej myśli." 
         : "Something disrupted my inner monologue. I'll try to return to that thought later.";
     return { reflection: fallbackReflection };
   }
 }
-
