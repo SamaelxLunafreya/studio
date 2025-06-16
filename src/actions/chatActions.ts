@@ -6,17 +6,27 @@ import { getAutonomousUpdate, type GetAutonomousUpdateInput, type AutonomousUpda
 import { generateCasualGreeting, type GenerateCasualGreetingInput, type GenerateCasualGreetingOutput } from '@/ai/flows/generate-casual-greeting-flow';
 
 const simplePolishGreetings = ["hej", "hejka", "cześć", "czesc", "siema", "witaj", "elo"]; // Keep lowercase for comparison
+const aiName = "luna"; // Define AI name for matching
 
 export async function handleChatMessageAction(userInput: string, language: 'Polish' | 'English'): Promise<CollaborateWithAiOutput | { error: string }> {
   try {
     const normalizedUserInput = userInput.trim().toLowerCase();
 
     // Check for simple Polish greetings if language is Polish
-    if (language === 'Polish' && simplePolishGreetings.includes(normalizedUserInput)) {
-      const greetingInput: GenerateCasualGreetingInput = { language };
-      const casualResult = await generateCasualGreeting(greetingInput);
-      if (casualResult.greetingText) {
-        return { summary: casualResult.greetingText, collaborativeIdeas: [] };
+    if (language === 'Polish') {
+      const isSimpleGreetingAlone = simplePolishGreetings.includes(normalizedUserInput);
+      // Check for "greeting luna" pattern
+      const isGreetingPlusLuna = simplePolishGreetings.some(greeting =>
+        normalizedUserInput === `${greeting} ${aiName}`
+      );
+
+      if (isSimpleGreetingAlone || isGreetingPlusLuna) {
+        const greetingInput: GenerateCasualGreetingInput = { language };
+        const casualResult = await generateCasualGreeting(greetingInput);
+        if (casualResult.greetingText) {
+          // Return in the format expected by CollaborateWithAiOutput
+          return { summary: casualResult.greetingText, collaborativeIdeas: [] };
+        }
       }
     }
 
@@ -27,7 +37,7 @@ export async function handleChatMessageAction(userInput: string, language: 'Poli
 
     const input: CollaborateWithAiInput = {
       topic: userInput,
-      aiAgentCount: 2, 
+      aiAgentCount: 2,
       instructions: instructions,
       language: language,
     };
