@@ -12,9 +12,9 @@ const aiNameFeminine = "lunaa"; // for "hej Lunaa"
 export async function handleChatMessageAction(
     userInput: string, 
     language: 'Polish' | 'English',
-    userDefinedPersonaContext?: string, // New parameter
-    recentMemorySnippets?: string     // New parameter
-  ): Promise<CollaborateWithAiOutput | { error: string }> {
+    userDefinedPersonaContext?: string, 
+    recentMemorySnippets?: string     
+  ): Promise<CollaborateWithAiOutput | { error: string }> { // Output type remains CollaborateWithAiOutput
   try {
     const normalizedUserInput = userInput.trim().toLowerCase();
 
@@ -29,7 +29,8 @@ export async function handleChatMessageAction(
         const greetingInput: GenerateCasualGreetingInput = { language };
         const casualResult = await generateCasualGreeting(greetingInput);
         if (casualResult.greetingText) {
-          return { summary: casualResult.greetingText, collaborativeIdeas: [] };
+          // Match CollaborateWithAiOutput structure for simple greetings
+          return { summary: casualResult.greetingText, collaborativeIdeas: [], retrievalWarning: undefined };
         }
       }
     }
@@ -45,16 +46,18 @@ export async function handleChatMessageAction(
       topic: userInput,
       aiAgentCount: 1, 
       baseInstructions: baseInstructions,
-      userDefinedPersonaContext: userDefinedPersonaContext, // Pass through
-      recentMemorySnippets: recentMemorySnippets,       // Pass through
+      userDefinedPersonaContext: userDefinedPersonaContext,
+      recentMemorySnippets: recentMemorySnippets, // This is from local storage for now
       language: language,
     };
-    const result = await collaborateWithAi(input);
-    return result;
+    // collaborateWithAi will now internally try to use Pinecone and return a warning if issues occur
+    const result = await collaborateWithAi(input); 
+    return result; // Result already matches CollaborateWithAiOutput including optional retrievalWarning
   } catch (error: any) {
     console.error('Error in handleChatMessageAction:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error in chat processing.';
-    return { error: `Failed to get AI response: ${errorMessage}. Please try again.` };
+    // Match CollaborateWithAiOutput structure for errors
+    return { error: `Failed to get AI response: ${errorMessage}. Please try again.`, summary: '', collaborativeIdeas: [], retrievalWarning: `Chat Action Error: ${errorMessage}` };
   }
 }
 
@@ -70,6 +73,6 @@ export async function getAutonomousUpdateAction(language: 'Polish' | 'English'):
     const fallbackReflection = language === 'Polish'
         ? "Coś zakłóciło mój wewnętrzny monolog. Spróbuję później wrócić do tej myśli."
         : "Something disrupted my inner monologue. I'll try to return to that thought later.";
-    return { reflection: fallbackReflection };
+    return { reflection: fallbackReflection }; // This error path returns AutonomousUpdateOutput
   }
 }

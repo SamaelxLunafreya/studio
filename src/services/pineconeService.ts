@@ -5,6 +5,7 @@ import { Pinecone, type Index as PineconeIndexType, type RecordMetadata, type Se
 
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_INDEX_NAME = process.env.PINECONE_INDEX_NAME;
+const PINECONE_ENVIRONMENT = process.env.PINECONE_ENVIRONMENT; // Added environment for client init
 const PINECONE_TEXT_FIELD = process.env.PINECONE_TEXT_FIELD_MAP || 'text';
 
 if (!PINECONE_API_KEY) {
@@ -13,17 +14,25 @@ if (!PINECONE_API_KEY) {
 if (!PINECONE_INDEX_NAME) {
   throw new Error('Pinecone index name is not configured. Please set PINECONE_INDEX_NAME in your .env file.');
 }
+if (!PINECONE_ENVIRONMENT) {
+  throw new Error('Pinecone environment is not configured. Please set PINECONE_ENVIRONMENT in your .env file.');
+}
+
 
 // Singleton pattern for Pinecone client and index
 let pineconeClientInstance: Pinecone | null = null;
 let pineconeIndexInstance: PineconeIndexType<RecordMetadata> | null = null;
 
+// This function is not exported, so it doesn't need to be async for 'use server' compliance
 function getPineconeClient(): Pinecone {
   if (!pineconeClientInstance) {
     pineconeClientInstance = new Pinecone({
-      apiKey: PINECONE_API_KEY!, 
+      apiKey: PINECONE_API_KEY!,
+      // environment is often not needed for Pinecone client initialization with newer client versions,
+      // as it's typically part of the index host. However, if your specific setup requires it, keep it.
+      // For newer serverless indexes, the full index host is usually more important.
+      // Let's assume it's not strictly needed for client init unless errors prove otherwise.
     });
-    // console.log('Pinecone client initialized.'); // Avoid excessive server logs unless debugging
   }
   return pineconeClientInstance;
 }
@@ -31,14 +40,19 @@ function getPineconeClient(): Pinecone {
 /**
  * Retrieves the initialized Pinecone index instance.
  * Ensures that the client and index are initialized only once.
- * @returns {PineconeIndexType<RecordMetadata>} The Pinecone index instance.
- * @throws {Error} If PINECONE_INDEX_NAME is not configured.
+ * @returns {Promise<PineconeIndexType<RecordMetadata>>} The Pinecone index instance.
+ * @throws {Error} If PINECONE_INDEX_NAME or PINECONE_ENVIRONMENT is not configured for constructing the host.
  */
-export function getPineconeIndex(): PineconeIndexType<RecordMetadata> {
+export async function getPineconeIndex(): Promise<PineconeIndexType<RecordMetadata>> {
   if (!pineconeIndexInstance) {
     const client = getPineconeClient();
+    // For serverless indexes, the host is constructed like:
+    // `${PINECONE_INDEX_NAME}-${PROJECT_ID}.svc.${PINECONE_ENVIRONMENT}.pinecone.io`
+    // However, the client.Index(PINECONE_INDEX_NAME) often handles this if environment is set globally for Pinecone
+    // or if the API key is scoped to a project that implies the environment.
+    // Let's stick to the simpler client.Index(name) and assume Pinecone handles resolution.
+    // If direct host construction is needed, Pinecone docs should clarify the exact format.
     pineconeIndexInstance = client.Index(PINECONE_INDEX_NAME!);
-    // console.log(\`Targeting Pinecone index: \${PINECONE_INDEX_NAME}\`);
   }
   return pineconeIndexInstance;
 }
@@ -49,7 +63,7 @@ export function getPineconeIndex(): PineconeIndexType<RecordMetadata> {
 export interface TextRecordToEmbed {
   id: string;
   /** The text content to be embedded by Pinecone. The key for this field is dynamically set from PINECONE_TEXT_FIELD_MAP. */
-  text: string; 
+  text: string;
   metadata?: RecordMetadata;
 }
 
@@ -61,15 +75,14 @@ export interface TextRecordToEmbed {
  * @returns {Promise<void>}
  */
 export async function upsertTextRecords(records: TextRecordToEmbed[], namespace?: string): Promise<void> {
-  const index = getPineconeIndex();
+  const index = await getPineconeIndex();
 
   const recordsToUpsert: ServerlessRecord<RecordMetadata>[] = records.map(r => {
-    const recordPayload: any = { id: r.id }; // Start with ID
+    const recordPayload: any = { id: r.id };
     if (r.metadata) {
-      recordPayload.metadata = r.metadata; // Add metadata if present
+      recordPayload.metadata = r.metadata;
     }
-    // Add the dynamic text field that Pinecone will embed
-    recordPayload[PINECONE_TEXT_FIELD] = r.text; 
+    recordPayload[PINECONE_TEXT_FIELD] = r.text;
     return recordPayload as ServerlessRecord<RecordMetadata>;
   });
 
@@ -79,7 +92,6 @@ export async function upsertTextRecords(records: TextRecordToEmbed[], namespace?
   } else {
     await index.upsert(recordsToUpsert);
   }
-  // console.log(\`Upserted \${recordsToUpsert.length} records to Pinecone index '\${PINECONE_INDEX_NAME}'\${namespace ? \` in namespace '\${namespace}'\` : ''}.\`);
 }
 
 /**
@@ -91,9 +103,8 @@ export async function upsertTextRecords(records: TextRecordToEmbed[], namespace?
  * @returns {Promise<QueryResponse<RecordMetadata>['matches'] | undefined>} A promise that resolves to the query matches.
  */
 export async function queryByVector(vector: number[], topK: number, namespace?: string, filter?: RecordMetadata) {
-  const index = getPineconeIndex();
-  
-  // Define the type for query options for clarity, though Pinecone SDK uses `any` or specific request types.
+  const index = await getPineconeIndex();
+
   const queryOptions: {
     vector: number[];
     topK: number;
@@ -116,7 +127,7 @@ export async function queryByVector(vector: number[], topK: number, namespace?: 
   } else {
     queryResponse = await index.query(queryOptions);
   }
-  
+
   return queryResponse?.matches;
 }
 
@@ -127,14 +138,13 @@ export async function queryByVector(vector: number[], topK: number, namespace?: 
  * @returns {Promise<void>}
  */
 export async function deleteRecordsByIds(ids: string[], namespace?: string): Promise<void> {
-    const index = getPineconeIndex();
+    const index = await getPineconeIndex();
     if (namespace) {
         const ns = index.namespace(namespace);
         await ns.deleteMany(ids);
     } else {
         await index.deleteMany(ids);
     }
-    // console.log(\`Attempted to delete records with ids: \${ids.join(', ')} from Pinecone index '\${PINECONE_INDEX_NAME}'\${namespace ? \` in namespace '\${namespace}'\` : ''}.\`);
 }
 
 /**
@@ -144,7 +154,7 @@ export async function deleteRecordsByIds(ids: string[], namespace?: string): Pro
  * @returns {Promise<FetchResponse<RecordMetadata>['records'] | undefined>} A promise that resolves to the fetched records.
  */
 export async function fetchRecordsByIds(ids: string[], namespace?: string) {
-    const index = getPineconeIndex();
+    const index = await getPineconeIndex();
     let fetchedResponse: FetchResponse<RecordMetadata>;
     if (namespace) {
         const ns = index.namespace(namespace);
@@ -161,7 +171,7 @@ export async function fetchRecordsByIds(ids: string[], namespace?: string) {
  * @returns {Promise<object>} A promise that resolves to the index statistics.
  */
 export async function getPineconeIndexStats() {
-    const index = getPineconeIndex();
+    const index = await getPineconeIndex();
     return await index.describeIndexStats();
 }
 
@@ -171,14 +181,10 @@ export async function getPineconeIndexStats() {
  */
 export async function checkPineconeServiceStatus(): Promise<boolean> {
   try {
-    // console.log('Checking Pinecone service status...');
     const stats = await getPineconeIndexStats();
-    // console.log('Pinecone index stats:', stats);
     if (stats && stats.totalRecordCount !== undefined) {
-      // console.log('Pinecone service is responsive.');
       return true;
     }
-    // console.warn('Pinecone service status check returned unexpected stats:', stats);
     return false;
   } catch (error) {
     console.error('Error connecting to Pinecone or fetching stats:', error);

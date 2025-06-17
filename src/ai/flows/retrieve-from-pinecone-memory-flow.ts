@@ -25,7 +25,6 @@ const PINECONE_TEXT_FIELD = process.env.PINECONE_TEXT_FIELD_MAP || 'text';
 const RetrieveFromPineconeMemoryInputSchema = z.object({
   queryText: z.string().describe('The text query to search for in memory.'),
   topK: z.number().optional().default(3).describe('The number of top matching memories to retrieve.'),
-  // We might add namespace or filter options later if needed
 });
 export type RetrieveFromPineconeMemoryInput = z.infer<typeof RetrieveFromPineconeMemoryInputSchema>;
 
@@ -33,13 +32,13 @@ const RetrievedMemorySchema = z.object({
   id: z.string(),
   score: z.number().optional(),
   text: z.string().optional().describe('The retrieved text content of the memory.'),
-  metadata: z.record(z.string(), z.any()).optional(),
+  // metadata: z.record(z.string(), z.any()).optional(), // We only care about text for now in this context
 });
+export type RetrievedMemory = z.infer<typeof RetrievedMemorySchema>;
 
 const RetrieveFromPineconeMemoryOutputSchema = z.object({
   retrievedMemories: z.array(RetrievedMemorySchema).describe('An array of retrieved memories.'),
-  // This message addresses the dimensionality issue for now.
-  warning: z.string().optional().describe('Warning about potential embedding mismatches.'),
+  warning: z.string().optional().describe('Warning about potential embedding mismatches or other issues.'),
 });
 export type RetrieveFromPineconeMemoryOutput = z.infer<typeof RetrieveFromPineconeMemoryOutputSchema>;
 
@@ -53,31 +52,33 @@ const retrieveFromPineconeMemoryFlow = ai.defineFlow(
     inputSchema: RetrieveFromPineconeMemoryInputSchema,
     outputSchema: RetrieveFromPineconeMemoryOutputSchema,
   },
-  async (input) => {
-    const dimensionalWarning = "Warning: Query embedding (likely 768-dim) may mismatch Pinecone index (1024-dim 'multilingual-e5-large'). This will lead to errors or poor results. Query embedding strategy needs alignment with index.";
+  async (input): Promise<RetrieveFromPineconeMemoryOutput> => {
+    const dimensionalWarning = "Critical Warning: Query embedding model (likely 768-dim from ai.embed default) currently MISMATCHES Pinecone index (1024-dim 'multilingual-e5-large'). This WILL lead to Pinecone errors or poor/irrelevant search results. Query embedding strategy requires alignment with the index for this feature to work correctly. This is a known issue for future improvement.";
     console.warn(dimensionalWarning);
 
     try {
       // 1. Embed the query text
-      //    This will use the default embedder from the googleAI plugin (e.g., 'embedding-001' - 768 dimensions)
+      // This will use the default embedder from the googleAI plugin (e.g., 'embedding-001' - likely 768 dimensions)
+      // NOTE: For production, this model MUST match multilingual-e5-large dimensions (1024) and semantic space.
+      console.log(`retrieveFromPineconeMemoryFlow: Embedding query: "${input.queryText}" (topK: ${input.topK})`);
       const { embedding } = await ai.embed({ text: input.queryText });
 
       if (!embedding) {
-        throw new Error('Failed to generate embedding for the query text.');
+        console.error('retrieveFromPineconeMemoryFlow: Failed to generate embedding for the query text.');
+        return { retrievedMemories: [], warning: `Failed to generate embedding for the query text. ${dimensionalWarning}` };
       }
       
-      // *** CRITICAL ISSUE POINT ***
+      // *** CRITICAL ISSUE POINT DUE TO DIMENSION MISMATCH ***
       // The 'embedding' here is likely 768-dimensional. The Pinecone index expects 1024-dimensional.
-      // A direct query will fail or return incorrect results.
-      // For now, we will proceed to show the structure, but this needs to be resolved.
-      // One might consider skipping the Pinecone query if dimensions mismatch,
-      // or having a more robust error handling / dimension check here.
+      // A direct query will likely fail or return meaningless results.
 
       // 2. Query Pinecone
+      console.log('retrieveFromPineconeMemoryFlow: Querying Pinecone...');
       const matches = await queryByVector(embedding, input.topK);
 
-      if (!matches) {
-        return { retrievedMemories: [], warning: dimensionalWarning };
+      if (!matches || matches.length === 0) {
+        console.log('retrieveFromPineconeMemoryFlow: No matches found in Pinecone.');
+        return { retrievedMemories: [], warning: `No matches found. ${dimensionalWarning}` };
       }
 
       // 3. Format the results
@@ -85,22 +86,23 @@ const retrieveFromPineconeMemoryFlow = ai.defineFlow(
         id: match.id,
         score: match.score,
         text: match.metadata?.[PINECONE_TEXT_FIELD] as string | undefined,
-        metadata: match.metadata,
-      }));
+        // metadata: match.metadata, // Not sending full metadata for now
+      })).filter(memory => memory.text); // Filter out memories without text
 
-      return { retrievedMemories, warning: dimensionalWarning };
+      console.log(`retrieveFromPineconeMemoryFlow: Found ${retrievedMemories.length} records.`);
+      return { retrievedMemories, warning: retrievedMemories.length > 0 ? dimensionalWarning : `No relevant text found in matches. ${dimensionalWarning}` };
 
     } catch (error: any) {
-      console.error('Error retrieving memories from Pinecone:', error);
-      // Include the warning in the error output as well
-      const errorMessage = error.message.includes('dimension mismatch') 
-        ? dimensionalWarning + ` Original error: ${error.message}`
-        : `Failed to retrieve memories: ${error.message || 'Unknown error'}. ${dimensionalWarning}`;
-      
-      // To make the flow still "succeed" but return the error message for diagnosis:
+      console.error('retrieveFromPineconeMemoryFlow: Error retrieving memories from Pinecone:', error);
+      let errorMessage = error.message || 'Unknown error during Pinecone retrieval.';
+      if (error.message && error.message.toLowerCase().includes('dimension mismatch')) {
+         errorMessage = `Pinecone error: Vector dimension mismatch. Query vector (likely 768) does not match index dimension (1024). ${dimensionalWarning}`;
+      } else {
+         errorMessage = `Failed to retrieve memories: ${errorMessage}. ${dimensionalWarning}`;
+      }
       return { 
         retrievedMemories: [], 
-        warning: errorMessage 
+        warning: errorMessage
       };
     }
   }
