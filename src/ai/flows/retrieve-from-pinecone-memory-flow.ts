@@ -61,20 +61,26 @@ const retrieveFromPineconeMemoryFlow = ai.defineFlow(
       // This will use the default embedder from the googleAI plugin (e.g., 'embedding-001' - likely 768 dimensions)
       // NOTE: For production, this model MUST match multilingual-e5-large dimensions (1024) and semantic space.
       console.log(`retrieveFromPineconeMemoryFlow: Embedding query: "${input.queryText}" (topK: ${input.topK})`);
-      const { embedding } = await ai.embed({ text: input.queryText });
+      
+      const embeddingResult = await ai.embed({ text: input.queryText });
 
-      if (!embedding) {
-        console.error('retrieveFromPineconeMemoryFlow: Failed to generate embedding for the query text.');
-        return { retrievedMemories: [], warning: `Failed to generate embedding for the query text. ${dimensionalWarning}` };
+      if (!embeddingResult || !embeddingResult.embedding || !Array.isArray(embeddingResult.embedding) || embeddingResult.embedding.length === 0) {
+        console.error('retrieveFromPineconeMemoryFlow: Failed to generate a valid embedding for the query text. Embedding result:', embeddingResult);
+        return { 
+          retrievedMemories: [], 
+          warning: `Failed to generate embedding for the query text. The embedding service might be unavailable or the query could not be processed. ${dimensionalWarning}` 
+        };
       }
       
+      const queryEmbedding = embeddingResult.embedding;
+      
       // *** CRITICAL ISSUE POINT DUE TO DIMENSION MISMATCH ***
-      // The 'embedding' here is likely 768-dimensional. The Pinecone index expects 1024-dimensional.
+      // The 'queryEmbedding' here is likely 768-dimensional. The Pinecone index expects 1024-dimensional.
       // A direct query will likely fail or return meaningless results.
 
       // 2. Query Pinecone
-      console.log('retrieveFromPineconeMemoryFlow: Querying Pinecone...');
-      const matches = await queryByVector(embedding, input.topK);
+      console.log('retrieveFromPineconeMemoryFlow: Querying Pinecone with an embedding of dimension:', queryEmbedding.length);
+      const matches = await queryByVector(queryEmbedding, input.topK);
 
       if (!matches || matches.length === 0) {
         console.log('retrieveFromPineconeMemoryFlow: No matches found in Pinecone.');
@@ -96,7 +102,7 @@ const retrieveFromPineconeMemoryFlow = ai.defineFlow(
       console.error('retrieveFromPineconeMemoryFlow: Error retrieving memories from Pinecone:', error);
       let errorMessage = error.message || 'Unknown error during Pinecone retrieval.';
       if (error.message && error.message.toLowerCase().includes('dimension mismatch')) {
-         errorMessage = `Pinecone error: Vector dimension mismatch. Query vector (likely 768) does not match index dimension (1024). ${dimensionalWarning}`;
+         errorMessage = `Pinecone error: Vector dimension mismatch. Query vector (likely ${ (error as any).queryVectorDim || 'unknown' }D) does not match index dimension (1024D). ${dimensionalWarning}`;
       } else {
          errorMessage = `Failed to retrieve memories: ${errorMessage}. ${dimensionalWarning}`;
       }
