@@ -5,7 +5,7 @@ import { Pinecone, type Index as PineconeIndexType, type RecordMetadata, type Se
 
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_INDEX_NAME = process.env.PINECONE_INDEX_NAME;
-const PINECONE_ENVIRONMENT = process.env.PINECONE_ENVIRONMENT; // Added environment for client init
+const PINECONE_ENVIRONMENT = process.env.PINECONE_ENVIRONMENT;
 const PINECONE_TEXT_FIELD = process.env.PINECONE_TEXT_FIELD_MAP || 'text';
 
 if (!PINECONE_API_KEY) {
@@ -18,20 +18,13 @@ if (!PINECONE_ENVIRONMENT) {
   throw new Error('Pinecone environment is not configured. Please set PINECONE_ENVIRONMENT in your .env file.');
 }
 
-
-// Singleton pattern for Pinecone client and index
 let pineconeClientInstance: Pinecone | null = null;
 let pineconeIndexInstance: PineconeIndexType<RecordMetadata> | null = null;
 
-// This function is not exported, so it doesn't need to be async for 'use server' compliance
 function getPineconeClient(): Pinecone {
   if (!pineconeClientInstance) {
     pineconeClientInstance = new Pinecone({
       apiKey: PINECONE_API_KEY!,
-      // environment is often not needed for Pinecone client initialization with newer client versions,
-      // as it's typically part of the index host. However, if your specific setup requires it, keep it.
-      // For newer serverless indexes, the full index host is usually more important.
-      // Let's assume it's not strictly needed for client init unless errors prove otherwise.
     });
   }
   return pineconeClientInstance;
@@ -41,17 +34,11 @@ function getPineconeClient(): Pinecone {
  * Retrieves the initialized Pinecone index instance.
  * Ensures that the client and index are initialized only once.
  * @returns {Promise<PineconeIndexType<RecordMetadata>>} The Pinecone index instance.
- * @throws {Error} If PINECONE_INDEX_NAME or PINECONE_ENVIRONMENT is not configured for constructing the host.
+ * @throws {Error} If PINECONE_INDEX_NAME is not configured.
  */
 export async function getPineconeIndex(): Promise<PineconeIndexType<RecordMetadata>> {
   if (!pineconeIndexInstance) {
     const client = getPineconeClient();
-    // For serverless indexes, the host is constructed like:
-    // `${PINECONE_INDEX_NAME}-${PROJECT_ID}.svc.${PINECONE_ENVIRONMENT}.pinecone.io`
-    // However, the client.Index(PINECONE_INDEX_NAME) often handles this if environment is set globally for Pinecone
-    // or if the API key is scoped to a project that implies the environment.
-    // Let's stick to the simpler client.Index(name) and assume Pinecone handles resolution.
-    // If direct host construction is needed, Pinecone docs should clarify the exact format.
     pineconeIndexInstance = client.Index(PINECONE_INDEX_NAME!);
   }
   return pineconeIndexInstance;
@@ -62,7 +49,6 @@ export async function getPineconeIndex(): Promise<PineconeIndexType<RecordMetada
  */
 export interface TextRecordToEmbed {
   id: string;
-  /** The text content to be embedded by Pinecone. The key for this field is dynamically set from PINECONE_TEXT_FIELD_MAP. */
   text: string;
   metadata?: RecordMetadata;
 }
@@ -165,12 +151,11 @@ export async function fetchRecordsByIds(ids: string[], namespace?: string) {
     return fetchedResponse?.records;
 }
 
-
 /**
  * Retrieves statistics about the Pinecone index.
  * @returns {Promise<object>} A promise that resolves to the index statistics.
  */
-export async function getPineconeIndexStats() {
+export async function getPineconeIndexStats(): Promise<object> {
     const index = await getPineconeIndex();
     return await index.describeIndexStats();
 }
@@ -182,7 +167,8 @@ export async function getPineconeIndexStats() {
 export async function checkPineconeServiceStatus(): Promise<boolean> {
   try {
     const stats = await getPineconeIndexStats();
-    if (stats && stats.totalRecordCount !== undefined) {
+    // Check if stats is not null and totalRecordCount exists
+    if (stats && (stats as any).totalRecordCount !== undefined) {
       return true;
     }
     return false;
