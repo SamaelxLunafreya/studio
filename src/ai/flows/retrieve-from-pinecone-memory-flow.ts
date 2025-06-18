@@ -64,11 +64,11 @@ const retrieveFromPineconeMemoryFlow = ai.defineFlow(
       
       const embeddingResult = await ai.embed({ text: input.queryText });
 
-      if (!embeddingResult || !embeddingResult.embedding || !Array.isArray(embeddingResult.embedding) || embeddingResult.embedding.length === 0) {
+      if (!embeddingResult || typeof embeddingResult.embedding === 'undefined' || !Array.isArray(embeddingResult.embedding) || embeddingResult.embedding.length === 0) {
         console.error('retrieveFromPineconeMemoryFlow: Failed to generate a valid embedding for the query text. Embedding result:', embeddingResult);
         return { 
           retrievedMemories: [], 
-          warning: `Failed to generate embedding for the query text. The embedding service might be unavailable or the query could not be processed. ${dimensionalWarning}` 
+          warning: `Failed to generate embedding for the query text. The embedding service might be unavailable or the query could not be processed. EmbeddingResult was: ${JSON.stringify(embeddingResult)}. ${dimensionalWarning}` 
         };
       }
       
@@ -103,7 +103,10 @@ const retrieveFromPineconeMemoryFlow = ai.defineFlow(
       let errorMessage = error.message || 'Unknown error during Pinecone retrieval.';
       if (error.message && error.message.toLowerCase().includes('dimension mismatch')) {
          errorMessage = `Pinecone error: Vector dimension mismatch. Query vector (likely ${ (error as any).queryVectorDim || 'unknown' }D) does not match index dimension (1024D). ${dimensionalWarning}`;
-      } else {
+      } else if (error instanceof TypeError && error.message.toLowerCase().includes('cannot convert undefined or null to object')) {
+        errorMessage = `TypeError during embedding or processing: ${error.message}. This often happens if ai.embed() fails to return a valid structure. ${dimensionalWarning}`;
+      }
+      else {
          errorMessage = `Failed to retrieve memories: ${errorMessage}. ${dimensionalWarning}`;
       }
       return { 
