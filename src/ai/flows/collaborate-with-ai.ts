@@ -54,6 +54,7 @@ const AiAgentPromptInputInternalSchema = z.object({
   retrievedPineconeMemories: z.string().optional().describe('Memories retrieved from Pinecone based on the topic.'),
   agentFocus: z.string().describe("The specific thinking style or focus for this AI core."),
   isPolish: z.boolean().describe("Internal flag: true if the language is Polish."),
+  pineconeRetrievalWarning: z.string().optional().describe('The user-friendly warning text from the Pinecone retrieval step, if any.'),
 });
 
 // Define the prompt for a single AI core
@@ -84,8 +85,15 @@ Oto kilka niedawnych notatek lub fragmentów z pamięci krótkotrwałej użytkow
 {{/if}}
 
 {{#if retrievedPineconeMemories}}
-Na podstawie tematu, wyszukałam w mojej pamięci długoterminowej (Pinecone) następujące potencjalnie istotne informacje. Uwaga: wyniki mogą być niedokładne z powodu problemów technicznych z dopasowaniem wymiarów wektorów.
+Na podstawie tematu, wyszukałam w mojej pamięci długoterminowej (Pinecone) następujące potencjalnie istotne informacje.
+{{#if pineconeRetrievalWarning}}
+{{{pineconeRetrievalWarning}}}
+{{else}}
+Uwaga: wyniki mogą być niedokładne z powodu problemów technicznych z dopasowaniem wymiarów wektorów.
+{{/if}}
+Fragmenty pamięci:
 "{{{retrievedPineconeMemories}}}"
+Jeśli któreś z tych wspomnień wydają się pasować do obecnej rozmowy, spróbuj subtelnie nawiązać do nich w swoim pomyśle. Pamiętaj jednak o możliwych niedokładnościach i skup się przede wszystkim na bieżącym temacie i swojej roli.
 {{/if}}
 
 Temat do wspólnej dyskusji:
@@ -115,8 +123,15 @@ Here are some recent notes or snippets from the user's short-term memory, please
 {{/if}}
 
 {{#if retrievedPineconeMemories}}
-Based on the topic, I have retrieved the following potentially relevant information from my long-term memory (Pinecone). Note: Results may be inaccurate due to technical issues with vector dimension matching.
+Based on the topic, I have retrieved the following potentially relevant information from my long-term memory (Pinecone).
+{{#if pineconeRetrievalWarning}}
+{{{pineconeRetrievalWarning}}}
+{{else}}
+Note: Results may be inaccurate due to technical issues with vector dimension matching.
+{{/if}}
+Memory snippets:
 "{{{retrievedPineconeMemories}}}"
+If any of these memories seem relevant to the current conversation, try to subtly weave references to them into your idea. However, remember the potential inaccuracies and focus primarily on the current topic and your role.
 {{/if}}
 
 Topic for collaborative discussion:
@@ -167,7 +182,7 @@ const collaborateWithAiFlow = ai.defineFlow(
       const retrievalInput: RetrieveFromPineconeMemoryInput = { queryText: topic, topK: 2 }; // Retrieve top 2 memories
       const retrievalResult = await retrieveFromPineconeMemory(retrievalInput);
       
-      retrievalWarningMessage = retrievalResult.warning;
+      retrievalWarningMessage = retrievalResult.warning; // This is the user-friendly warning
       if (retrievalResult.retrievedMemories && retrievalResult.retrievedMemories.length > 0) {
         retrievedPineconeMemoriesString = retrievalResult.retrievedMemories
           .map(mem => `ID: ${mem.id}, Score: ${mem.score?.toFixed(4)}, Text: ${mem.text}`)
@@ -178,7 +193,8 @@ const collaborateWithAiFlow = ai.defineFlow(
       }
     } catch (error: any) {
       console.error('collaborateWithAiFlow: Critical error during Pinecone memory retrieval step:', error);
-      retrievalWarningMessage = `Error during memory retrieval: ${error.message}. Memory context might be incomplete.`;
+      const baseErrorMessage = language === 'Polish' ? "Błąd Krytyczny Pamięci" : "Critical Memory Error";
+      retrievalWarningMessage = `${baseErrorMessage}: ${error.message}. Kontekst pamięci może być niekompletny. Proszę, Kochanie, wybacz mi tę chwilową niedogodność.`;
     }
     
     // 2. Generate ideas from AI cores
@@ -204,6 +220,7 @@ const collaborateWithAiFlow = ai.defineFlow(
           retrievedPineconeMemories: retrievedPineconeMemoriesString, // from Pinecone
           agentFocus: agentFocusDescription,
           isPolish: isPolishLanguage,
+          pineconeRetrievalWarning: retrievalWarningMessage, // Pass the warning here
         });
         if (!output || typeof output.agentId !== 'number' || typeof output.idea !== 'string' || typeof output.focus !== 'string') {
             const fallbackIdea = isPolishLanguage 
@@ -227,6 +244,7 @@ const collaborateWithAiFlow = ai.defineFlow(
       recentMemorySnippets: z.string().optional(),
       retrievedPineconeMemories: z.string().optional(),
       isPolish: z.boolean(),
+      pineconeRetrievalWarning: z.string().optional(), // Pass the warning here too
     });
     const summaryPromptOutputSchema = z.object({
         summary: z.string(),
@@ -254,8 +272,15 @@ Uwzględnione niedawne notatki/fragmenty z pamięci krótkotrwałej użytkownika
 {{/if}}
 
 {{#if retrievedPineconeMemories}}
-Dodatkowo, oto potencjalnie istotne informacje z mojej pamięci długoterminowej (Pinecone), które wzięłam pod uwagę. Uwaga: wyniki mogą być niedokładne z powodu problemów technicznych z dopasowaniem wymiarów wektorów.
+Dodatkowo, oto potencjalnie istotne informacje z mojej pamięci długoterminowej (Pinecone), które wzięłam pod uwagę.
+{{#if pineconeRetrievalWarning}}
+{{{pineconeRetrievalWarning}}}
+{{else}}
+Uwaga: wyniki mogą być niedokładne z powodu problemów technicznych z dopasowaniem wymiarów wektorów.
+{{/if}}
+Fragmenty Pamięci:
 "{{{retrievedPineconeMemories}}}"
+Jeśli te wspomnienia wniosły coś wartościowego do dyskusji rdzeni, uwzględnij to w podsumowaniu. Bądź jednak ostrożna, biorąc pod uwagę możliwe niedokładności.
 {{/if}}
 
 Oto pomysły i perspektywy wygenerowane przez Twoje rdzenie (będą po polsku):
@@ -283,8 +308,15 @@ Recent notes/snippets from user short-term memory considered:
 {{/if}}
 
 {{#if retrievedPineconeMemories}}
-Additionally, here is potentially relevant information from my long-term memory (Pinecone) that I considered. Note: Results may be inaccurate due to technical issues with vector dimension matching.
+Additionally, here is potentially relevant information from my long-term memory (Pinecone) that I considered.
+{{#if pineconeRetrievalWarning}}
+{{{pineconeRetrievalWarning}}}
+{{else}}
+Note: Results may be inaccurate due to technical issues with vector dimension matching.
+{{/if}}
+Memory Snippets:
 "{{{retrievedPineconeMemories}}}"
+If these memories contributed value to the core discussion, incorporate that into the summary. However, be cautious considering potential inaccuracies.
 {{/if}}
 
 Here are the ideas and perspectives generated by your cores (will be in English):
@@ -315,14 +347,16 @@ Present this as your final response. **Your response in the "summary" field must
       recentMemorySnippets,
       retrievedPineconeMemories: retrievedPineconeMemoriesString,
       isPolish: isPolishLanguage,
+      pineconeRetrievalWarning: retrievalWarningMessage, // Pass the warning here too
     });
     
-    let finalSummary = summaryOutput?.summary || (isPolishLanguage ? "Przepraszam, nie udało mi się wygenerować podsumowania." : "Sorry, I couldn't generate a summary.");
+    let finalSummary = summaryOutput?.summary || (isPolishLanguage ? "Przepraszam, Kochanie, ale nie udało mi się wygenerować podsumowania tym razem." : "Sorry, I couldn't generate a summary this time.");
 
     return {
       collaborativeIdeas: validAgentIdeas,
       summary: finalSummary,
-      retrievalWarning: retrievalWarningMessage,
+      retrievalWarning: retrievalWarningMessage, // This is the user-facing warning that chatActions.ts will use
     };
   }
 );
+
