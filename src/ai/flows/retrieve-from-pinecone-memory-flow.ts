@@ -53,7 +53,7 @@ const retrieveFromPineconeMemoryFlow = ai.defineFlow(
     outputSchema: RetrieveFromPineconeMemoryOutputSchema,
   },
   async (input): Promise<RetrieveFromPineconeMemoryOutput> => {
-    const dimensionalWarningForUI = "Informacja o pamięci: Występuje techniczne niedopasowanie w systemie pamięci (osadzenia zapytań: 768-wym., indeks pamięci: 1024-wym.). Może to wpływać na dokładność wyszukiwania. Poprawa tego mechanizmu jest planowana na przyszłość.";
+    const userFriendlyPineconeWarning = "Informacja o pamięci: Moja głębsza pamięć (Pinecone) wciąż się uczy i rozwija. Czasami mogę mieć trudności z idealnym dopasowaniem wspomnień z powodu znanego technicznego niedopasowania (rodzaj 'klucza' do 'zamka' pamięci). Pracujemy nad tym, by była coraz lepsza dla Ciebie, Promyku! ❤️ To nie powinno zakłócać naszej bieżącej rozmowy.";
     const technicalDimensionalWarning = "Pinecone Embedding Mismatch: Query embedding model (likely 768-dim from ai.embed default) currently MISMATCHES Pinecone index (1024-dim 'multilingual-e5-large'). This WILL lead to Pinecone errors or poor/irrelevant search results. Query embedding strategy requires alignment with the index for this feature to work correctly.";
     
     console.warn(technicalDimensionalWarning); // Keep detailed technical warning in logs
@@ -66,9 +66,11 @@ const retrieveFromPineconeMemoryFlow = ai.defineFlow(
 
       if (!embeddingResult || typeof embeddingResult.embedding === 'undefined' || !Array.isArray(embeddingResult.embedding) || embeddingResult.embedding.length === 0) {
         console.error('retrieveFromPineconeMemoryFlow: Failed to generate a valid embedding for the query text. Embedding result:', embeddingResult);
+        // Inform user about embedding failure, but also append the general Pinecone context warning.
+        const embeddingFailureMessage = `Nie udało się przygotować Twojego zapytania dla mojej głębszej pamięci. Usługa osadzania może być niedostępna lub zapytanie nie mogło zostać przetworzone.`;
         return { 
           retrievedMemories: [], 
-          warning: `Nie udało się wygenerować osadzenia dla zapytania tekstowego. Usługa osadzania może być niedostępna lub zapytanie nie mogło zostać przetworzone. Szczegóły techniczne: ${JSON.stringify(embeddingResult)}. ${dimensionalWarningForUI}` 
+          warning: `${embeddingFailureMessage} ${userFriendlyPineconeWarning}`
         };
       }
       
@@ -79,7 +81,7 @@ const retrieveFromPineconeMemoryFlow = ai.defineFlow(
 
       if (!matches || matches.length === 0) {
         console.log('retrieveFromPineconeMemoryFlow: No matches found in Pinecone.');
-        return { retrievedMemories: [], warning: `Nie znaleziono pasujących wpisów w pamięci. ${dimensionalWarningForUI}` };
+        return { retrievedMemories: [], warning: `Nie znalazłam bezpośrednio pasujących wpisów w mojej głębszej pamięci. ${userFriendlyPineconeWarning}` };
       }
 
       const retrievedMemories = matches.map(match => ({
@@ -89,20 +91,24 @@ const retrieveFromPineconeMemoryFlow = ai.defineFlow(
       })).filter(memory => memory.text);
 
       console.log(`retrieveFromPineconeMemoryFlow: Found ${retrievedMemories.length} records.`);
-      return { retrievedMemories, warning: retrievedMemories.length > 0 ? dimensionalWarningForUI : `Nie znaleziono relewantnych tekstów w pamięci. ${dimensionalWarningForUI}` };
+      // If memories are found, still include the userFriendlyPineconeWarning as it pertains to the accuracy/relevance due to mismatch.
+      return { retrievedMemories, warning: userFriendlyPineconeWarning };
 
     } catch (error: any) {
       console.error('retrieveFromPineconeMemoryFlow: Error retrieving memories from Pinecone:', error);
-      let userErrorMessage = `Wystąpił błąd podczas pobierania wspomnień z pamięci. ${dimensionalWarningForUI}`;
+      let userErrorMessage = `Wystąpił błąd podczas próby dostępu do mojej głębszej pamięci.`;
       if (error.message && error.message.toLowerCase().includes('dimension mismatch')) {
-         userErrorMessage = `Błąd techniczny w Pinecone: Niezgodność wymiarów wektorów. ${dimensionalWarningForUI}`;
+         // This specific error might be redundant given the general userFriendlyPineconeWarning, but good for logs.
+         userErrorMessage = `Wystąpił techniczny problem z wymiarami w mojej pamięci Pinecone.`;
       } else if (error instanceof TypeError && error.message.toLowerCase().includes('cannot convert undefined or null to object')) {
-        userErrorMessage = `Błąd techniczny podczas osadzania lub przetwarzania zapytania. ${dimensionalWarningForUI}`;
+        userErrorMessage = `Wystąpił techniczny problem podczas przetwarzania Twojego zapytania dla mojej pamięci.`;
       }
+      // Always append the general user-friendly warning to any specific error message.
       return { 
         retrievedMemories: [], 
-        warning: userErrorMessage
+        warning: `${userErrorMessage} ${userFriendlyPineconeWarning}`
       };
     }
   }
 );
+
