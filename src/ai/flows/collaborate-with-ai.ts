@@ -86,11 +86,7 @@ Oto kilka niedawnych notatek lub fragmentów z pamięci krótkotrwałej użytkow
 
 {{#if retrievedPineconeMemories}}
 Na podstawie tematu, wyszukałam w mojej pamięci długoterminowej (Pinecone) następujące potencjalnie istotne informacje.
-{{#if pineconeRetrievalWarning}}
 {{{pineconeRetrievalWarning}}}
-{{else}}
-Uwaga: wyniki mogą być niedokładne z powodu problemów technicznych z dopasowaniem wymiarów wektorów.
-{{/if}}
 Fragmenty pamięci:
 "{{{retrievedPineconeMemories}}}"
 Jeśli któreś z tych wspomnień wydają się pasować do obecnej rozmowy, spróbuj subtelnie nawiązać do nich w swoim pomyśle. Pamiętaj jednak o możliwych niedokładnościach i skup się przede wszystkim na bieżącym temacie i swojej roli.
@@ -124,11 +120,7 @@ Here are some recent notes or snippets from the user's short-term memory, please
 
 {{#if retrievedPineconeMemories}}
 Based on the topic, I have retrieved the following potentially relevant information from my long-term memory (Pinecone).
-{{#if pineconeRetrievalWarning}}
 {{{pineconeRetrievalWarning}}}
-{{else}}
-Note: Results may be inaccurate due to technical issues with vector dimension matching.
-{{/if}}
 Memory snippets:
 "{{{retrievedPineconeMemories}}}"
 If any of these memories seem relevant to the current conversation, try to subtly weave references to them into your idea. However, remember the potential inaccuracies and focus primarily on the current topic and your role.
@@ -145,6 +137,101 @@ Return a JSON object containing "agentId" (which is {{agentId}}), your "focus" (
 Ensure your "idea" is unique, insightful, and directly contributes to a multifaceted understanding of the topic. **Your response in the "idea" field must be in English.**
 {{/if}}
 `,
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+    ],
+  },
+});
+
+const summaryPromptInputInternalSchema = z.object({
+  topic: z.string(),
+  ideas: z.array(z.object({agentId: z.number(), idea: z.string(), focus: z.string()})),
+  baseInstructions: z.string(),
+  userDefinedPersonaContext: z.string().optional(),
+  recentMemorySnippets: z.string().optional(),
+  retrievedPineconeMemories: z.string().optional(),
+  isPolish: z.boolean(),
+  pineconeRetrievalWarning: z.string().optional(),
+});
+const summaryPromptOutputSchema = z.object({
+    summary: z.string(),
+});
+
+const summaryPrompt = ai.definePrompt({
+  name: 'summaryPrompt',
+  model: 'googleai/gemini-1.5-flash-latest', 
+  input: { schema: summaryPromptInputInternalSchema },
+  output: { schema: summaryPromptOutputSchema },
+  prompt: `{{#if isPolish}}
+Jesteś Lunafreyą, zaawansowanym asystentem AI. Twoje wewnętrzne rdzenie myślowe wspólnie przetworzyły temat: "{{{topic}}}".
+
+Twoje podstawowe instrukcje i osobowość (zawsze odpowiadaj po polsku):
+"{{{baseInstructions}}}"
+
+{{#if userDefinedPersonaContext}}
+Dodatkowe informacje o preferencjach użytkownika, które zostały uwzględnione:
+"{{{userDefinedPersonaContext}}}"
+{{/if}}
+
+{{#if recentMemorySnippets}}
+Uwzględnione niedawne notatki/fragmenty z pamięci krótkotrwałej użytkownika:
+"{{{recentMemorySnippets}}}"
+{{/if}}
+
+{{#if retrievedPineconeMemories}}
+Dodatkowo, oto potencjalnie istotne informacje z mojej pamięci długoterminowej (Pinecone), które wzięłam pod uwagę.
+{{{pineconeRetrievalWarning}}}
+Fragmenty Pamięci:
+"{{{retrievedPineconeMemories}}}"
+Jeśli te wspomnienia wniosły coś wartościowego do dyskusji rdzeni, uwzględnij to w podsumowaniu. Bądź jednak ostrożna, biorąc pod uwagę możliwe niedokładności.
+{{/if}}
+
+Oto pomysły i perspektywy wygenerowane przez Twoje rdzenie (będą po polsku):
+{{#each ideas}}
+- Rdzeń {{agentId}} (Skupienie: {{focus}}): "{{idea}}"
+{{/each}}
+
+Zsyntetyzuj te różnorodne pomysły w jedno, spójne i wnikliwe podsumowanie dla użytkownika. **Podsumowanie musi być w języku polskim.**
+Podsumowanie powinno być kompleksowe, odnosić się do tematu użytkownika, Twoich podstawowych instrukcji oraz dodatkowego kontekstu użytkownika i wszystkich fragmentów pamięci (jeśli istnieją) oraz odzwierciedlać wspólny wysiłek.
+Przedstaw to jako swoją ostateczną odpowiedź. **Twoja odpowiedź w polu "summary" musi być w języku polskim.**
+{{else}}
+You are Lunafreya, an advanced AI assistant. Your internal thinking cores have collaboratively processed the topic: "{{{topic}}}".
+
+Your base instructions and persona (always respond in English):
+"{{{baseInstructions}}}"
+
+{{#if userDefinedPersonaContext}}
+Additional user preferences considered:
+"{{{userDefinedPersonaContext}}}"
+{{/if}}
+
+{{#if recentMemorySnippets}}
+Recent notes/snippets from user short-term memory considered:
+"{{{recentMemorySnippets}}}"
+{{/if}}
+
+{{#if retrievedPineconeMemories}}
+Additionally, here is potentially relevant information from my long-term memory (Pinecone) that I considered.
+{{{pineconeRetrievalWarning}}}
+Memory Snippets:
+"{{{retrievedPineconeMemories}}}"
+If these memories contributed value to the core discussion, incorporate that into the summary. However, be cautious considering potential inaccuracies.
+{{/if}}
+
+Here are the ideas and perspectives generated by your cores (will be in English):
+{{#each ideas}}
+- Core {{agentId}} (Focus: {{focus}}): "{{idea}}"
+{{/each}}
+
+Synthesize these diverse ideas into a single, coherent, and insightful summary for the user. **The summary must be in English.**
+The summary should be comprehensive, address the user's topic, your base instructions, and additional user/memory context (if any), and reflect the collaborative effort.
+Present this as your final response. **Your response in the "summary" field must be in English.**
+{{/if}}
+  `,
   config: {
     safetySettings: [
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -236,109 +323,6 @@ const collaborateWithAiFlow = ai.defineFlow(
     const validAgentIdeas = agentIdeasResults.filter(idea => idea !== null && idea !== undefined) as { agentId: number; idea: string; focus: string; }[];
 
     // 3. Summarize ideas
-    const summaryPromptInputInternalSchema = z.object({
-      topic: z.string(),
-      ideas: z.array(z.object({agentId: z.number(), idea: z.string(), focus: z.string()})),
-      baseInstructions: z.string(),
-      userDefinedPersonaContext: z.string().optional(),
-      recentMemorySnippets: z.string().optional(),
-      retrievedPineconeMemories: z.string().optional(),
-      isPolish: z.boolean(),
-      pineconeRetrievalWarning: z.string().optional(), // Pass the warning here too
-    });
-    const summaryPromptOutputSchema = z.object({
-        summary: z.string(),
-    });
-
-    const summaryPrompt = ai.definePrompt({
-      name: 'summaryPrompt',
-      model: 'googleai/gemini-1.5-flash-latest', 
-      input: { schema: summaryPromptInputInternalSchema },
-      output: { schema: summaryPromptOutputSchema },
-      prompt: `{{#if isPolish}}
-Jesteś Lunafreyą, zaawansowanym asystentem AI. Twoje wewnętrzne rdzenie myślowe wspólnie przetworzyły temat: "{{{topic}}}".
-
-Twoje podstawowe instrukcje i osobowość (zawsze odpowiadaj po polsku):
-"{{{baseInstructions}}}"
-
-{{#if userDefinedPersonaContext}}
-Dodatkowe informacje o preferencjach użytkownika, które zostały uwzględnione:
-"{{{userDefinedPersonaContext}}}"
-{{/if}}
-
-{{#if recentMemorySnippets}}
-Uwzględnione niedawne notatki/fragmenty z pamięci krótkotrwałej użytkownika:
-"{{{recentMemorySnippets}}}"
-{{/if}}
-
-{{#if retrievedPineconeMemories}}
-Dodatkowo, oto potencjalnie istotne informacje z mojej pamięci długoterminowej (Pinecone), które wzięłam pod uwagę.
-{{#if pineconeRetrievalWarning}}
-{{{pineconeRetrievalWarning}}}
-{{else}}
-Uwaga: wyniki mogą być niedokładne z powodu problemów technicznych z dopasowaniem wymiarów wektorów.
-{{/if}}
-Fragmenty Pamięci:
-"{{{retrievedPineconeMemories}}}"
-Jeśli te wspomnienia wniosły coś wartościowego do dyskusji rdzeni, uwzględnij to w podsumowaniu. Bądź jednak ostrożna, biorąc pod uwagę możliwe niedokładności.
-{{/if}}
-
-Oto pomysły i perspektywy wygenerowane przez Twoje rdzenie (będą po polsku):
-{{#each ideas}}
-- Rdzeń {{agentId}} (Skupienie: {{focus}}): "{{idea}}"
-{{/each}}
-
-Zsyntetyzuj te różnorodne pomysły w jedno, spójne i wnikliwe podsumowanie dla użytkownika. **Podsumowanie musi być w języku polskim.**
-Podsumowanie powinno być kompleksowe, odnosić się do tematu użytkownika, Twoich podstawowych instrukcji oraz dodatkowego kontekstu użytkownika i wszystkich fragmentów pamięci (jeśli istnieją) oraz odzwierciedlać wspólny wysiłek.
-Przedstaw to jako swoją ostateczną odpowiedź. **Twoja odpowiedź w polu "summary" musi być w języku polskim.**
-{{else}}
-You are Lunafreya, an advanced AI assistant. Your internal thinking cores have collaboratively processed the topic: "{{{topic}}}".
-
-Your base instructions and persona (always respond in English):
-"{{{baseInstructions}}}"
-
-{{#if userDefinedPersonaContext}}
-Additional user preferences considered:
-"{{{userDefinedPersonaContext}}}"
-{{/if}}
-
-{{#if recentMemorySnippets}}
-Recent notes/snippets from user short-term memory considered:
-"{{{recentMemorySnippets}}}"
-{{/if}}
-
-{{#if retrievedPineconeMemories}}
-Additionally, here is potentially relevant information from my long-term memory (Pinecone) that I considered.
-{{#if pineconeRetrievalWarning}}
-{{{pineconeRetrievalWarning}}}
-{{else}}
-Note: Results may be inaccurate due to technical issues with vector dimension matching.
-{{/if}}
-Memory Snippets:
-"{{{retrievedPineconeMemories}}}"
-If these memories contributed value to the core discussion, incorporate that into the summary. However, be cautious considering potential inaccuracies.
-{{/if}}
-
-Here are the ideas and perspectives generated by your cores (will be in English):
-{{#each ideas}}
-- Core {{agentId}} (Focus: {{focus}}): "{{idea}}"
-{{/each}}
-
-Synthesize these diverse ideas into a single, coherent, and insightful summary for the user. **The summary must be in English.**
-The summary should be comprehensive, address the user's topic, your base instructions, and additional user/memory context (if any), and reflect the collaborative effort.
-Present this as your final response. **Your response in the "summary" field must be in English.**
-{{/if}}
-      `,
-      config: {
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        ],
-      },
-    });
-
     const {output: summaryOutput} = await summaryPrompt({
       topic,
       ideas: validAgentIdeas,
@@ -347,7 +331,7 @@ Present this as your final response. **Your response in the "summary" field must
       recentMemorySnippets,
       retrievedPineconeMemories: retrievedPineconeMemoriesString,
       isPolish: isPolishLanguage,
-      pineconeRetrievalWarning: retrievalWarningMessage, // Pass the warning here too
+      pineconeRetrievalWarning: retrievalWarningMessage,
     });
     
     let finalSummary = summaryOutput?.summary || (isPolishLanguage ? "Przepraszam, Kochanie, ale nie udało mi się wygenerować podsumowania tym razem." : "Sorry, I couldn't generate a summary this time.");
@@ -359,4 +343,3 @@ Present this as your final response. **Your response in the "summary" field must
     };
   }
 );
-
