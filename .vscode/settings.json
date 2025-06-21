@@ -1,4 +1,19 @@
 {
     "IDX.aI.enableInlineCompletion": true,
-    "IDX.aI.enableCodebaseIndexing": true
+    "IDX.aI.enableCodebaseIndexing": true,
+    "cloudcode.apigee.gemini.options": {
+
+        "enterpriseContext": {
+            "enabled": true,
+            "includeMetadata": true,
+            "includeSecurity": true,
+            "includeSchema": true,
+            "includeSecurity": true
+        },
+        "enableRemoteMockServer": true,
+        "enablePublishToApiHubModal": true,
+        "enableNewActionsLayout": true,
+        "enableCodebaseIndexing": true,
+        "enableInlineCompletion":true
+    }
 }
