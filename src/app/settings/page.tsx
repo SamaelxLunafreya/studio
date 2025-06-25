@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, User, Brain, Palette, ExternalLink, Cloud, Loader2, AlertCircle, CheckCircle, Save, Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,6 +20,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+const AI_PERSONA_DESCRIPTION_STORAGE_KEY = 'aiPersonaDescription';
 
 export default function SettingsPage() {
   const [personalitySettings, setPersonalitySettings] = useState<InitialPromptSetupInput>({
@@ -29,6 +30,15 @@ export default function SettingsPage() {
   const [isLoadingPersonality, setIsLoadingPersonality] = useState(false);
   const [personaDescription, setPersonaDescription] = useState('');
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedPersona = localStorage.getItem(AI_PERSONA_DESCRIPTION_STORAGE_KEY);
+      if (savedPersona) {
+        setPersonaDescription(savedPersona);
+      }
+    }
+  }, []);
 
   const handlePersonalityChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setPersonalitySettings({ ...personalitySettings, [e.target.name]: e.target.value });
@@ -45,7 +55,7 @@ export default function SettingsPage() {
       return;
     }
     setIsLoadingPersonality(true);
-    setPersonaDescription('');
+    // Do not clear personaDescription here, allow user to see previously saved one if save fails
     const result = await savePersonalitySettingsAction(personalitySettings);
     setIsLoadingPersonality(false);
 
@@ -58,9 +68,12 @@ export default function SettingsPage() {
       });
     } else {
       setPersonaDescription(result.aiPersonaDescription);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(AI_PERSONA_DESCRIPTION_STORAGE_KEY, result.aiPersonaDescription);
+      }
       toast({
-        title: 'Personality Saved',
-        description: "AI's personality settings have been updated.",
+        title: 'Personality Settings Updated',
+        description: "AI's persona description has been generated and saved locally.",
         icon: <CheckCircle className="h-5 w-5" />,
       });
     }
@@ -109,7 +122,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-xl">Advanced AI Personality Settings</CardTitle>
             </div>
             <CardDescription>
-              Define personal and professional needs for the AI to remember, shaping its response behavior and persona.
+              Define personal and professional needs for the AI to remember. Based on these, a persona description will be generated and saved locally in your browser. This saved description is for your reference here and for potential future use; the active chat persona (especially for Polish) currently uses specific instructions optimized for the desired affectionate interaction.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSavePersonality}>
@@ -140,7 +153,7 @@ export default function SettingsPage() {
               </div>
               {personaDescription && (
                 <div className="rounded-md border bg-muted/30 p-4">
-                  <p className="text-sm font-medium text-primary mb-1">Generated AI Persona Description:</p>
+                  <p className="text-sm font-medium text-primary mb-1">Locally Saved AI Persona Description:</p>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">{personaDescription}</p>
                 </div>
               )}
@@ -150,12 +163,12 @@ export default function SettingsPage() {
                 {isLoadingPersonality ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving Personality...
+                    Generating & Saving...
                   </>
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Save Personality Settings
+                    Generate & Save Persona
                   </>
                 )}
               </Button>

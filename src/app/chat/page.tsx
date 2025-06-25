@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Send, Mic, Volume2, Bot, User, Loader2, Save, PlusCircle, FileText, Power, LanguagesIcon } from 'lucide-react';
+import { Send, Mic, Volume2, Bot, User, Loader2, Save, PlusCircle, FileText, Power, LanguagesIcon, MessageCircle, AlertTriangleIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -22,6 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Message {
   id: string;
@@ -30,6 +36,7 @@ interface Message {
   timestamp: Date;
   isError?: boolean;
   isAutonomous?: boolean;
+  retrievalWarning?: string; // Added to display Pinecone retrieval warnings
 }
 
 interface SavedChatSession {
@@ -37,19 +44,27 @@ interface SavedChatSession {
   name: string;
   messages: Message[];
   savedAt: number;
-  language?: 'Polish' | 'English'; // Store language with session
+  language?: 'Polish' | 'English'; 
 }
+
+interface MemoryItem {
+  id: string;
+  type: 'text' | 'pdf' | 'pinecone_text';
+  content?: string;
+  fileName?: string;
+  timestamp: number;
+  pineconeRecordId?: string;
+}
+
 
 type ChatLanguage = 'Polish' | 'English';
 
 const CHAT_HISTORY_LOCAL_STORAGE_KEY = 'chatHistory';
 const AUTONOMOUS_MODE_STORAGE_KEY = 'autonomousModeEnabled';
 const CHAT_LANGUAGE_STORAGE_KEY = 'chatLanguagePreference';
-
-const LUNAFREYA_GREETING_ID = 'lunafreya-initial-greeting';
-const INITIAL_GREETING_TEXT_POLISH = "Cześć! Jestem Lunafreya, Twoja asystentka AI. W czym mogę Ci dzisiaj pomóc?";
-const INITIAL_GREETING_TEXT_ENGLISH = "Hi! I'm Lunafreya, your AI assistant. How can I help you today?";
-
+const AI_PERSONA_DESCRIPTION_STORAGE_KEY = 'aiPersonaDescription';
+const MEMORY_ITEMS_LOCAL_STORAGE_KEY = 'lunafreyaMemoryItems';
+const MAX_MEMORY_SNIPPETS_TO_SEND = 2; 
 
 export default function ChatPage() {
   const router = useRouter();
@@ -77,7 +92,6 @@ export default function ChatPage() {
 
   useEffect(scrollToBottom, [messages]);
 
-  // Load preferences from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedMode = localStorage.getItem(AUTONOMOUS_MODE_STORAGE_KEY);
@@ -90,12 +104,11 @@ export default function ChatPage() {
     }
   }, []);
 
-  // Handle Autonomous Mode
   useEffect(() => {
     if (isAutonomousModeEnabled) {
       autonomousIntervalRef.current = setInterval(async () => {
         const result = await getAutonomousUpdateAction(currentLanguage);
-        if ('error' in result) { // Should ideally not happen if action handles errors by returning reflection
+        if ('error' in result) {
           console.error("Autonomous update error from action:", result.error);
            const autonomousMessage: Message = {
             id: Date.now().toString() + '-autonomous-error',
@@ -116,7 +129,7 @@ export default function ChatPage() {
           };
           setMessages(prev => [...prev, autonomousMessage]);
         }
-      }, 30000);
+      }, 30000); // Every 30 seconds
     } else {
       if (autonomousIntervalRef.current) {
         clearInterval(autonomousIntervalRef.current);
@@ -154,17 +167,6 @@ export default function ChatPage() {
         description: lang === 'Polish' ? 'Lunafreya będzie teraz odpowiadać po polsku.' : 'Lunafreya will now respond in English.',
       });
     }
-    // When language changes, if there are no user messages, update greeting to new language
-    const nonAutonomousMessages = messages.filter(m => !m.isAutonomous && m.id !== LUNAFREYA_GREETING_ID);
-    if (nonAutonomousMessages.length === 0) {
-        const greetingMessage: Message = {
-            id: LUNAFREYA_GREETING_ID,
-            role: 'ai',
-            text: lang === 'Polish' ? INITIAL_GREETING_TEXT_POLISH : INITIAL_GREETING_TEXT_ENGLISH,
-            timestamp: new Date(),
-        };
-        setMessages(prev => [greetingMessage, ...prev.filter(m => m.isAutonomous)]);
-    }
   };
 
   const getChatHistory = useCallback((): SavedChatSession[] => {
@@ -196,7 +198,7 @@ export default function ChatPage() {
 
   const saveCurrentChat = useCallback((messagesToSave?: Message[]) => {
     const currentMessages = messagesToSave || messages;
-    const meaningfulMessages = currentMessages.filter(m => m.id !== LUNAFREYA_GREETING_ID && !m.isAutonomous);
+    const meaningfulMessages = currentMessages.filter(m => !m.isAutonomous); 
     if (meaningfulMessages.length === 0) return null;
 
     let newSessionId = currentSessionId || Date.now().toString();
@@ -212,7 +214,7 @@ export default function ChatPage() {
       name: sessionName,
       messages: currentMessages.map(msg => ({...msg, timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)})),
       savedAt: Date.now(),
-      language: currentLanguage, // Save current language with session
+      language: currentLanguage,
     };
 
     if (existingSessionIndex > -1) {
@@ -221,35 +223,10 @@ export default function ChatPage() {
       history.unshift(sessionToSave);
     }
 
-    saveChatHistory(history.slice(0, 50)); // Limit history size
+    saveChatHistory(history.slice(0, 50)); // Limit to 50 sessions
     setCurrentSessionId(newSessionId);
     return newSessionId;
   }, [messages, currentSessionId, getChatHistory, currentLanguage]);
-
-  const addInitialGreetingIfNeeded = useCallback((currentMessages: Message[], lang: ChatLanguage) => {
-    const nonAutonomousOrGreetingMessages = currentMessages.filter(m => !m.isAutonomous && m.id !== LUNAFREYA_GREETING_ID);
-    if (nonAutonomousOrGreetingMessages.length === 0) {
-        // Check if a greeting already exists, even if it's the only one.
-        const greetingExists = currentMessages.some(m => m.id === LUNAFREYA_GREETING_ID);
-        if (!greetingExists) {
-            const greetingMessage: Message = {
-                id: LUNAFREYA_GREETING_ID,
-                role: 'ai',
-                text: lang === 'Polish' ? INITIAL_GREETING_TEXT_POLISH : INITIAL_GREETING_TEXT_ENGLISH,
-                timestamp: new Date(),
-            };
-            setMessages(prev => [greetingMessage, ...prev.filter(m => m.isAutonomous)]);
-        } else {
-             // If greeting exists, ensure it's in the correct language
-            setMessages(prev => prev.map(m => {
-                if (m.id === LUNAFREYA_GREETING_ID) {
-                    return {...m, text: lang === 'Polish' ? INITIAL_GREETING_TEXT_POLISH : INITIAL_GREETING_TEXT_ENGLISH };
-                }
-                return m;
-            }));
-        }
-    }
-  }, []);
 
   const loadChatSession = useCallback((sessionId: string) => {
     const history = getChatHistory();
@@ -257,7 +234,7 @@ export default function ChatPage() {
     if (session) {
       setMessages(session.messages.map(msg => ({...msg, timestamp: new Date(msg.timestamp)})));
       setCurrentSessionId(session.id);
-      const sessionLang = session.language || 'Polish'; // Default to Polish if not set
+      const sessionLang = session.language || 'Polish';
       setCurrentLanguage(sessionLang);
       if (typeof window !== 'undefined') {
         localStorage.setItem(CHAT_LANGUAGE_STORAGE_KEY, sessionLang);
@@ -265,11 +242,10 @@ export default function ChatPage() {
       toast({ title: sessionLang === 'Polish' ? 'Czat Załadowany' : 'Chat Loaded', description: `${sessionLang === 'Polish' ? 'Załadowano' : 'Loaded'} "${session.name}".` });
     } else {
       toast({ title: 'Błąd', description: currentLanguage === 'Polish' ? 'Nie znaleziono sesji czatu.' : 'Chat session not found.', variant: 'destructive' });
-      setMessages([]);
+      setMessages(prev => prev.filter(m => m.isAutonomous)); 
       setCurrentSessionId(null);
-      addInitialGreetingIfNeeded([], currentLanguage);
     }
-  }, [toast, getChatHistory, currentLanguage, addInitialGreetingIfNeeded]);
+  }, [toast, getChatHistory, currentLanguage]);
 
 
   useEffect(() => {
@@ -279,14 +255,17 @@ export default function ChatPage() {
         loadChatSession(sessionIdFromUrl);
       }
     } else {
-      addInitialGreetingIfNeeded(messages, currentLanguage);
+        if (!currentSessionId) {
+             // Clear non-autonomous messages if no session is loaded and no session ID in URL
+             setMessages(prev => prev.filter(m => m.isAutonomous));
+        }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, loadChatSession, currentLanguage]);
+  }, [searchParams, loadChatSession, currentSessionId]); // Added currentSessionId to prevent re-clearing if already loaded
 
 
   const handleNewChat = () => {
-    const meaningfulMessages = messages.filter(m => m.id !== LUNAFREYA_GREETING_ID && !m.isAutonomous);
+    const meaningfulMessages = messages.filter(m => !m.isAutonomous);
     if (meaningfulMessages.length > 0) {
       const savedId = saveCurrentChat();
       if (savedId) {
@@ -295,14 +274,8 @@ export default function ChatPage() {
     }
     setInputValue('');
     setCurrentSessionId(null);
-    const greetingMessage: Message = {
-      id: LUNAFREYA_GREETING_ID,
-      role: 'ai',
-      text: currentLanguage === 'Polish' ? INITIAL_GREETING_TEXT_POLISH : INITIAL_GREETING_TEXT_ENGLISH,
-      timestamp: new Date(),
-    };
-    // Keep recent autonomous messages if any
-    setMessages(prev => [greetingMessage, ...prev.filter(m => m.isAutonomous && m.timestamp.getTime() > Date.now() - 5*60*1000)]);
+    // Keep recent autonomous messages
+    setMessages(prev => prev.filter(m => m.isAutonomous && m.timestamp.getTime() > Date.now() - 5*60*1000));
     router.push('/chat', { scroll: false });
   };
 
@@ -310,7 +283,7 @@ export default function ChatPage() {
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (recognitionRef.current) {
-        recognitionRef.current.abort(); // Stop any existing recognition
+        recognitionRef.current.abort(); // Ensure previous instance is stopped
       }
       recognitionRef.current = new SpeechRecognition();
       const recognition = recognitionRef.current;
@@ -328,16 +301,15 @@ export default function ChatPage() {
             interimTranscript += event.results[i][0].transcript;
           }
         }
-         setInputValue(prev => {
-            // This logic for updating interim results might need refinement
-            // For simplicity, focusing on final transcript for now if interim is tricky
-            if (interimTranscript && prev.endsWith(interimTranscript.slice(0,-1))) {
+         setInputValue(prev => { // More robust interim update
+            if (interimTranscript && prev.endsWith(interimTranscript.slice(0,-1))) { // Heuristic for ongoing interim result
                 return prev.slice(0, prev.length - interimTranscript.length +1) + interimTranscript;
             }
             return prev + interimTranscript;
         });
         if (finalTranscript) {
-            setInputValue(prev => prev.replace(interimTranscript, '') + finalTranscript); // More robust update
+            // Replace the full interim with the final, or append if no clear interim match
+            setInputValue(prev => prev.replace(interimTranscript, '') + finalTranscript);
         }
       };
       recognition.onerror = (event) => {
@@ -364,10 +336,10 @@ export default function ChatPage() {
       recognitionRef.current.stop();
     } else {
       try {
-        recognitionRef.current.lang = currentLanguage === 'Polish' ? 'pl-PL' : 'en-US'; // Ensure lang is set before starting
+        recognitionRef.current.lang = currentLanguage === 'Polish' ? 'pl-PL' : 'en-US'; // Ensure lang is current
         recognitionRef.current.start();
         setIsListening(true);
-      } catch (error) {
+      } catch (error) { // Catch potential errors during start()
         console.error("Error starting speech recognition:", error);
         setIsListening(false);
         toast({ title: currentLanguage === 'Polish' ? 'Błąd Startu Rozpoznawania' : 'Recognition Start Error', description: String(error), variant: 'destructive' });
@@ -378,35 +350,40 @@ export default function ChatPage() {
   const speakText = (text: string) => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
+        window.speechSynthesis.cancel(); // Stop any current speech
       }
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = currentLanguage === 'Polish' ? 'pl-PL' : 'en-US';
 
+      // Attempt to find a specific voice
       const voices = window.speechSynthesis.getVoices();
       let targetVoice: SpeechSynthesisVoice | undefined;
 
       if (currentLanguage === 'Polish') {
+        // Prioritize known good voices
         const microsoftPaulina = voices.find(voice => voice.lang.startsWith('pl') && voice.name.toLowerCase().includes('microsoft paulina online'));
         const anyPaulina = voices.find(voice => voice.lang.startsWith('pl') && voice.name.toLowerCase().includes('paulina'));
-        const polishFemaleNames = ['paulina', 'zosia', 'ewa', 'agata', 'anna', 'magda', 'hanna']; // Paulina is already prioritized
+        // Generic female polish names as fallback
+        const polishFemaleNames = ['zosia', 'ewa', 'agata', 'anna', 'magda', 'hanna'];
         
         targetVoice = microsoftPaulina || anyPaulina ||
           voices.find(voice => voice.lang.startsWith('pl') && polishFemaleNames.some(name => voice.name.toLowerCase().includes(name))) ||
-          voices.find(voice => voice.lang.startsWith('pl') && (voice.name.toLowerCase().includes('kobieta') || voice.name.toLowerCase().includes('female')));
+          voices.find(voice => voice.lang.startsWith('pl') && (voice.name.toLowerCase().includes('kobieta') || voice.name.toLowerCase().includes('female'))); // More generic fallback
       } else { // English
+        // Prioritize known good voices or more natural sounding ones
         targetVoice =
-          voices.find(voice => voice.lang.startsWith('en') && voice.name.toLowerCase().includes('juniper')) ||
-          voices.find(voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('female')) ||
-          voices.find(voice => voice.lang === 'en-GB' && voice.name.toLowerCase().includes('female')) ||
-          voices.find(voice => voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female'));
+          voices.find(voice => voice.lang.startsWith('en') && voice.name.toLowerCase().includes('juniper')) || // Example of a specific voice
+          voices.find(voice => voice.lang === 'en-US' && voice.name.toLowerCase().includes('female')) || // US Female
+          voices.find(voice => voice.lang === 'en-GB' && voice.name.toLowerCase().includes('female')) || // UK Female
+          voices.find(voice => voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female')); // Any English Female
       }
 
       if (targetVoice) {
         utterance.voice = targetVoice;
       } else {
+        // Fallback to any voice matching the language if specific ones aren't found
         let fallbackVoice = voices.find(voice => voice.lang === utterance.lang);
-        if (!fallbackVoice) {
+        if (!fallbackVoice) { // If exact lang match fails, try matching the primary language part (e.g., 'en' for 'en-US')
           fallbackVoice = voices.find(voice => voice.lang.startsWith(utterance.lang.substring(0, 2)));
         }
         if (fallbackVoice) {
@@ -420,8 +397,10 @@ export default function ChatPage() {
     }
   };
 
+  // Ensure voices are loaded
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      // Trigger loading voices if they are not already available.
       if (speechSynthesis.getVoices().length === 0) {
         speechSynthesis.onvoiceschanged = () => { /* Voices loaded */ };
       }
@@ -432,40 +411,77 @@ export default function ChatPage() {
     const textToSend = (messageText || inputValue).trim();
     if (!textToSend) return;
 
-    let updatedMessages = [...messages];
-    const nonAutonomousMessages = updatedMessages.filter(m => !m.isAutonomous);
-    if (nonAutonomousMessages.length === 1 && nonAutonomousMessages[0].id === LUNAFREYA_GREETING_ID) {
-      updatedMessages = updatedMessages.filter(m => m.id !== LUNAFREYA_GREETING_ID);
-    }
-
     const userMessage: Message = { id: Date.now().toString(), role: 'user', text: textToSend, timestamp: new Date() };
-    updatedMessages.push(userMessage);
-
-    setMessages(updatedMessages);
+    
+    setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
 
-    const aiResponse = await handleChatMessageAction(textToSend, currentLanguage);
+    let userDefinedPersonaContext: string | undefined;
+    let recentMemorySnippetsFromStorage: string | undefined; // Renamed to avoid confusion
+
+    if (typeof window !== 'undefined') {
+      userDefinedPersonaContext = localStorage.getItem(AI_PERSONA_DESCRIPTION_STORAGE_KEY) || undefined;
+      
+      const memoryItemsJson = localStorage.getItem(MEMORY_ITEMS_LOCAL_STORAGE_KEY);
+      if (memoryItemsJson) {
+        try {
+          const memoryItems: MemoryItem[] = JSON.parse(memoryItemsJson);
+          // Only send 'text' type items from local storage (not PDFs or Pinecone logs)
+          const textSnippets = memoryItems
+            .filter(item => item.type === 'text' && item.content && !item.content.startsWith('Archived Chat Session:')) 
+            .sort((a, b) => b.timestamp - a.timestamp) 
+            .slice(0, MAX_MEMORY_SNIPPETS_TO_SEND)
+            .map(item => item.content)
+            .join('\n---\n'); 
+          if (textSnippets) {
+            recentMemorySnippetsFromStorage = textSnippets;
+          }
+        } catch (e) {
+          console.error("Error parsing memory items for chat context:", e);
+        }
+      }
+    }
+
+    const aiResponse = await handleChatMessageAction(
+      textToSend, 
+      currentLanguage,
+      userDefinedPersonaContext,
+      recentMemorySnippetsFromStorage // This is for short-term/local storage snippets
+    );
     setIsLoading(false);
 
-    let finalMessages = updatedMessages;
-
-    if ('error' in aiResponse) {
-      const errorMessage: Message = { id: Date.now().toString() + '-error', role: 'ai', text: aiResponse.error, timestamp: new Date(), isError: true };
-      finalMessages = [...updatedMessages, errorMessage];
-      setMessages(finalMessages);
-      toast({ title: currentLanguage === 'Polish' ? 'Błąd AI' : 'AI Error', description: aiResponse.error, variant: 'destructive' });
+    if ('error' in aiResponse || !aiResponse.summary) { // Check if summary is missing too
+      const errorText = ('error' in aiResponse && aiResponse.error) 
+        ? aiResponse.error 
+        : (currentLanguage === 'Polish' ? 'Nie udało się uzyskać odpowiedzi AI.' : 'Failed to get AI response.');
+      const errorMessage: Message = { 
+        id: Date.now().toString() + '-error', 
+        role: 'ai', 
+        text: errorText, 
+        timestamp: new Date(), 
+        isError: true,
+        retrievalWarning: aiResponse.retrievalWarning 
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      toast({ title: currentLanguage === 'Polish' ? 'Błąd AI' : 'AI Error', description: errorText, variant: 'destructive' });
     } else {
-      const aiResponseMessage: Message = { id: (aiResponse as CollaborateWithAiOutput).summary + Date.now(), role: 'ai', text: (aiResponse as CollaborateWithAiOutput).summary, timestamp: new Date() };
-      finalMessages = [...updatedMessages, aiResponseMessage];
-      setMessages(finalMessages);
+      const aiResponseMessage: Message = { 
+        id: aiResponse.summary + Date.now(), 
+        role: 'ai', 
+        text: aiResponse.summary, 
+        timestamp: new Date(),
+        retrievalWarning: aiResponse.retrievalWarning 
+      };
+      setMessages(prev => [...prev, aiResponseMessage]);
     }
-  }, [inputValue, messages, toast, currentLanguage]);
+  }, [inputValue, currentLanguage, toast]);
 
 
   return (
     <>
       <PageHeader title={currentLanguage === 'Polish' ? 'Czat AI' : 'AI Chat'} />
+      <TooltipProvider>
       <div className="flex h-[calc(100vh-var(--header-height)-2rem)] flex-col">
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-6">
@@ -485,9 +501,22 @@ export default function ChatPage() {
                   msg.isAutonomous && 'border border-dashed border-primary/50'
                 )}>
                   <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                  {msg.retrievalWarning && !msg.isAutonomous && (
+                    <Tooltip delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <div className="mt-1.5 flex items-center text-xs opacity-70 cursor-help">
+                          <AlertTriangleIcon size={14} className="mr-1 text-amber-500" />
+                          <span className="hover:underline">{currentLanguage === 'Polish' ? 'Problem z pamięcią' : 'Memory Issue'}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" align="start" className="max-w-xs p-2 bg-background border border-amber-500/50 shadow-lg">
+                        <p className="text-xs text-foreground whitespace-pre-wrap">{msg.retrievalWarning}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   <div className="mt-1.5 flex items-center justify-between">
                     <span className="text-xs opacity-70">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    {msg.role === 'ai' && !msg.isError && msg.id !== LUNAFREYA_GREETING_ID && !msg.isAutonomous && (
+                    {msg.role === 'ai' && !msg.isError && !msg.isAutonomous && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => speakText(msg.text)}>
                         <Volume2 size={16} />
                         <span className="sr-only">{currentLanguage === 'Polish' ? 'Mów' : 'Speak'}</span>
@@ -512,6 +541,13 @@ export default function ChatPage() {
                 </div>
               </div>
             )}
+            {messages.length === 0 && !isLoading && ( // Show only if truly empty (no autonomous messages either)
+                 <div className="text-center text-muted-foreground py-10">
+                    <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium">{currentLanguage === 'Polish' ? 'Rozpocznij rozmowę z Lunafreyą' : 'Start a conversation with Lunafreya'}</p>
+                    <p className="text-sm">{currentLanguage === 'Polish' ? 'Wpisz wiadomość poniżej lub użyj mikrofonu.' : 'Type your message below or use the microphone.'}</p>
+                </div>
+            )}
           </div>
         </ScrollArea>
 
@@ -530,7 +566,7 @@ export default function ChatPage() {
                  <Button variant="outline" size="sm" onClick={handleNewChat}>
                     <PlusCircle size={16} className="mr-2" /> {currentLanguage === 'Polish' ? 'Nowy Czat' : 'New Chat'}
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => { saveCurrentChat(); toast({title: currentLanguage === 'Polish' ? "Czat Zapisany" : "Chat Saved", description: currentLanguage === 'Polish' ? "Bieżąca rozmowa została zapisana." : "Current conversation saved."}) }} disabled={messages.filter(m => m.id !== LUNAFREYA_GREETING_ID && !m.isAutonomous).length === 0}>
+                <Button variant="outline" size="sm" onClick={() => { saveCurrentChat(); toast({title: currentLanguage === 'Polish' ? "Czat Zapisany" : "Chat Saved", description: currentLanguage === 'Polish' ? "Bieżąca rozmowa została zapisana." : "Current conversation saved."}) }} disabled={messages.filter(m => !m.isAutonomous).length === 0}>
                     <Save size={16} className="mr-2" /> {currentLanguage === 'Polish' ? 'Zapisz Czat' : 'Save Chat'}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => router.push('/chat-history')}>
@@ -576,7 +612,7 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+      </TooltipProvider>
     </>
   );
 }
-

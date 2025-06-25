@@ -14,6 +14,8 @@ import '@/ai/flows/generate-image-flow.ts';
 import '@/ai/flows/translate-text-flow.ts';
 import '@/ai/flows/get-autonomous-update-flow.ts'; 
 import '@/ai/flows/generate-casual-greeting-flow.ts';
+import '@/ai/flows/save-to-pinecone-memory-flow.ts';
+import '@/ai/flows/retrieve-from-pinecone-memory-flow.ts'; // Added new flow
 import '@/ai/tools/google-drive-tool.ts';
 import '@/ai/tools/github-tool.ts';
 
